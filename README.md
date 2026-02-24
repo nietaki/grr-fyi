@@ -1,6 +1,10 @@
-# Tennyn
+# Epstein File Review
 
-# TODO
+# TODO - App
+- [ ] figure out how to build the sqlite db
+- [ ] figure out where to keep the sqlite database (SMB share?)
+
+# TODO - DevOps
 - [x] best practice tools 
 - [x] echo
 - [x] CI testing
@@ -13,5 +17,4 @@
 - [ ] add zombiezen sqlite driver
 - [ ] configurable database (location and so on)
 - [ ] SQLite POC
-- [ ] multi-tenant support
 - [ ] open telemetry integration

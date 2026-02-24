@@ -6,6 +6,8 @@ export pwd=$(shell pwd)
 export BUILD_DIR=$(pwd)/build
 export ARCHITECTURES=(amd64 arm64 386)
 export OPERATING_SYSTEMS=(linux darwin)
+export APP_VERSION=$(shell cat APP_VERSION.txt)
+export CHART_VERSION=$(shell cat CHART_VERSION.txt)
 
 .PHONY: all
 all: check test
@@ -62,8 +64,20 @@ build-all:
 
 .PHONY: build-docker
 build-docker:
+	echo "DEPRECATED: use 'make push-docker' instead"
+	exit 1
 	docker buildx build --platform linux/arm64,linux/amd64 --tag registry.hoplon.net/nietaki/epstein-file-review:latest .
 
 .PHONY: push-docker
 push-docker:
-	docker buildx build --platform linux/arm64,linux/amd64 --tag registry.hoplon.net/nietaki/epstein-file-review:latest --push .
+	docker buildx build --platform linux/arm64,linux/amd64 --tag registry.hoplon.net/nietaki/epstein-file-review:latest --tag registry.hoplon.net/nietaki/epstein-file-review:v$(APP_VERSION) --push .
+
+# build/efr-chart-$(CHART_VERSION).tgz: push-docker
+build/efr-chart-$(CHART_VERSION).tgz:
+	echo "packaging the chart, version $(CHART_VERSION)"
+	helm package efr-chart --app-version $(APP_VERSION) --version $(CHART_VERSION) --destination $(BUILD_DIR)
+
+.PHONY: helm-push
+helm-push: build/efr-chart-$(CHART_VERSION).tgz
+	helm push build/efr-chart-$(CHART_VERSION).tgz oci://registry.hoplon.net/helm-charts
+
