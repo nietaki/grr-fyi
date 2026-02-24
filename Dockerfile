@@ -19,4 +19,6 @@ FROM base AS final
 
 COPY --from=builder /usr/local/app/build/epstein-file-review /usr/local/app/epstein-file-review
 VOLUME /data
+
+ENV SERVER_PORT=80
 ENTRYPOINT ["/usr/local/app/epstein-file-review"]

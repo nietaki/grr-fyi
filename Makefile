@@ -70,10 +70,10 @@ build-docker:
 
 .PHONY: push-docker
 push-docker:
-	docker buildx build --platform linux/arm64,linux/amd64 --tag registry.hoplon.net/nietaki/epstein-file-review:latest --tag registry.hoplon.net/nietaki/epstein-file-review:v$(APP_VERSION) --push .
+	docker buildx build --platform linux/arm64,linux/amd64 --tag registry.hoplon.net/nietaki/epstein-file-review:latest --tag registry.hoplon.net/nietaki/epstein-file-review:$(APP_VERSION) --push .
 
-# build/efr-chart-$(CHART_VERSION).tgz: push-docker
-build/efr-chart-$(CHART_VERSION).tgz:
+build/efr-chart-$(CHART_VERSION).tgz: push-docker
+# build/efr-chart-$(CHART_VERSION).tgz:
 	echo "packaging the chart, version $(CHART_VERSION)"
 	helm package efr-chart --app-version $(APP_VERSION) --version $(CHART_VERSION) --destination $(BUILD_DIR)
 
