@@ -1,9 +1,11 @@
-FROM golang:1.25.6-alpine AS base
+# FROM golang:1.25.6-alpine AS base
+FROM golang:1.25-trixie AS base
 
 RUN mkdir -p /usr/local/app/build
 # RUN apt-get update && apt-get install -y --no-install-recommends bash 
 WORKDIR /usr/local/app
 
+RUN apt-get update && apt-get install -y --no-install-recommends bash poppler-utils
 
 FROM base AS builder
 
@@ -18,7 +20,13 @@ RUN go build -o build/epstein-file-review
 FROM base AS final
 
 COPY --from=builder /usr/local/app/build/epstein-file-review /usr/local/app/epstein-file-review
-VOLUME /data
+COPY process_and_start.sh /usr/local/app/process_and_start.sh
+COPY convert_all.sh /usr/local/app/convert_all.sh
+
+VOLUME /raw_data
+VOLUME /processed_data
+VOLUME /app_tmp
 
 ENV SERVER_PORT=80
-ENTRYPOINT ["/usr/local/app/epstein-file-review"]
+# ENTRYPOINT ["/usr/local/app/epstein-file-review"]
+ENTRYPOINT ["/usr/local/app/process_and_start.sh"]
