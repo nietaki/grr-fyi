@@ -1,5 +1,8 @@
 #!/bin/env bash
 
+ln -s /raw_data ./raw_data
+ln -s /processed_data ./processed_data
+
 # this script converts all (nested) .flac files from /input to opus files in /output
 INPUT_DIR="/raw_data"
 OUTPUT_DIR="/processed_data"
@@ -8,7 +11,7 @@ FILE_COUNT=$(find "$INPUT_DIR" -type f -iname "*.pdf" | wc -l)
 echo "Found $FILE_COUNT PDF files to convert."
 
 find $INPUT_DIR -type f  -not -path '*/.*' | sed 's/.*\.//' | sort | uniq -c
-find $INPUT_DIR -type f  -not -path '*/.*' > /app_tmp/all_files.txt
+find $INPUT_DIR -type f  -not -path '*/.*' > ./all_files.txt
 
 FILE_NO=0
 

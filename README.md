@@ -1,20 +1,11 @@
 # Epstein File Review
 
-# TODO - App
-- [ ] figure out how to build the sqlite db
-- [ ] figure out where to keep the sqlite database (SMB share?)
+## TODO
 
-# TODO - DevOps
-- [x] best practice tools 
-- [x] echo
-- [x] CI testing
-- [x] hello world server
-- [x] docker build
-- [x] docker upload to private repo
-- [x] pick a db driver
-- [ ] helm chart
-- [ ] automatic deploy to kubernetes
-- [ ] add zombiezen sqlite driver
-- [ ] configurable database (location and so on)
-- [ ] SQLite POC
-- [ ] open telemetry integration
+- [ ] go back to using the standard echo FS (symlinks?)
+- [ ] move the endpoint to a path instead of /
+- [ ] cache only the right things
+- [ ] iframes
+- [ ] deescalate the privileges of the server container
+- [ ] HTML, AlpineJS
+

@@ -3,7 +3,7 @@ package env
 import "github.com/caarlos0/env/v11"
 
 type Config struct {
-	ServerPort string `env:"SERVER_PORT" envDefault:"50666"`
+	ServerPort string `env:"SERVER_PORT" envDefault:"30666"`
 }
 
 func Load() Config {

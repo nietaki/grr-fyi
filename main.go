@@ -19,19 +19,16 @@ func main() {
 	println("Current working directory: ", dir)
 	// read the `all_files.txt` file and split into non-empty lines
 
-	file, err := os.Open("/app_tmp/all_files.txt")
+	file, err := os.Open("all_files.txt")
 	if err != nil {
-		file, err = os.Open("all_files.txt")
-		if err != nil {
-			panic(err)
-		}
+		panic(err)
 	}
 	scanner := bufio.NewScanner(file)
 	var files []string
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line != "" {
-			files = append(files, line)
+			files = append(files, strings.TrimPrefix(line, "/"))
 		}
 	}
 

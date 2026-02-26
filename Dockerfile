@@ -7,6 +7,8 @@ WORKDIR /usr/local/app
 
 RUN apt-get update && apt-get install -y --no-install-recommends bash poppler-utils
 
+RUN chmod ugo+rwx /usr/local/app
+
 FROM base AS builder
 
 COPY go.mod ./
