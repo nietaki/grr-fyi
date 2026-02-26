@@ -31,6 +31,12 @@ func CacheHeader(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+func indexValues() map[string]any {
+	return map[string]any{
+		"fileCount": filedb.FileCount(),
+	}
+}
+
 func Start(cfg env.Config) {
 	// config := echo.Config{
 	// 	Filesystem: os.DirFS("/"),
@@ -49,6 +55,7 @@ func Start(cfg env.Config) {
 	e.Static("/", "static")
 
 	e.GET("/randomfilename", func(c *echo.Context) error {
+
 		// return c.String(200, "Hello, World!")
 		filename := filedb.GetRandomFilename()
 		return c.String(200, filename)
@@ -56,17 +63,30 @@ func Start(cfg env.Config) {
 
 	e.GET("/", func(c *echo.Context) error {
 		// hello world
-		return c.Render(200, "index.html", nil)
+		return c.Render(200, "index.html", indexValues())
 	})
 
 	e.GET("/randomfile", func(c *echo.Context) error {
+		filetypes, err := echo.FormValues[string](c, "filetypes[]")
+		if err != nil {
+			filetypes = []string{}
+			// return c.String(400, fmt.Sprintf("invalid filetype parameter: %v", categories))
+		}
+
+		fmt.Printf("filetypes: %v\n", filetypes)
 		filename := filedb.GetRandomFilename()
 
 		// filename = strings.TrimPrefix(filename, "/")
 		// get basename of the file
 		base := path.Base(filename)
-		fmt.Printf("Serving file: %q\n", filename)
-		return c.Inline(filename, base)
+		// fmt.Printf("Serving file: %q\n", filename)
+
+		switch filedb.FileType(filename) {
+		case "pdf", "video", "audio":
+			return c.Inline(filename, base)
+		default:
+			return c.Attachment(filename, base)
+		}
 	})
 
 	// concatenate the dot and the port

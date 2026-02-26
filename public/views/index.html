@@ -15,7 +15,7 @@
 			<form action="/randomfile" method="get" target="file_frame">
 			<div class="row header grid">
 				<label>
-						<legend>containing text:</legend>
+						<legend>(pdfs) containing text</legend>
 						<div role="search">
 							<input type="search" placeholder="coming soon..." disabled />
 							<input type="reset" value="clear" />
@@ -23,13 +23,13 @@
 				</label>
 				<fieldset>
 					<legend>file types</legend>
-					<input type="checkbox" name="filetype" value="pdf" id="pdf" checked />
+					<input type="checkbox" name="filetypes[]" value="pdf" id="pdf" checked />
 					<label for="pdf">PDF</label>
-					<input type="checkbox" name="filetype" value="audio" id="audio" checked />
+					<input type="checkbox" name="filetypes[]" value="audio" id="audio" checked />
 					<label for="audio">audio</label>
-					<input type="checkbox" name="filetype" value="video" id="video" checked />
+					<input type="checkbox" name="filetypes[]" value="video" id="video" checked />
 					<label for="video">video</label>
-					<input type="checkbox" name="filetype" value="other" id="other" />
+					<input type="checkbox" name="filetypes[]" value="other" id="other" />
 					<label for="other">other</label>
 				</fieldset>
 				<button type="submit">Another one!</button>
@@ -41,7 +41,7 @@
 		</div>
 		<div class="row footer grid">
 			<div class="left">
-				XXX files so far
+					{{.fileCount}} files so far
 			</div>
 			<div class="right">
 				Epstein Roulette, whipped up and hosted by <a href="https://nietaki.com/">nietaki</a>

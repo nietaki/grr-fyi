@@ -30,7 +30,7 @@ body {
 
 .box .row.footer {
   flex: 0 1 40px;
-  margin: 6px;
+  margin: 6px 16px;
 }
 
 legend {
