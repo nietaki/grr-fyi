@@ -1,18 +1,39 @@
 package filedb
 
-import "math/rand"
+import (
+	"path"
+	"strings"
 
-var files []string
+	lo "github.com/samber/lo"
+)
+
+var allFilenames []string
+var filenamesByType map[string][]string
+
+func FileType(filename string) string {
+	ext := path.Ext(filename)
+	ext = strings.ToLower(ext)
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".gif":
+		return "image"
+	default:
+		return "other"
+	}
+}
+
+func getRandom(filenames []string) string {
+	ret := lo.Sample(filenames)
+
+	if ret == "" {
+		return "not_found.png"
+	}
+	return ret
+}
 
 func StoreFilenames(f []string) {
-	files = f
+	allFilenames = f
 }
 
 func GetRandomFilename() string {
-	if len(files) == 0 {
-		return "no entries"
-	}
-	// get random index
-	index := rand.Intn(len(files))
-	return files[index]
+	return getRandom(allFilenames)
 }

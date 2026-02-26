@@ -29,11 +29,18 @@ body {
 }
 
 .box .row.footer {
-  text-align: right;
   flex: 0 1 40px;
   margin: 6px;
 }
 
 legend {
   font-weight: bold;
+}
+
+.left {
+  text-align: left;
+}
+
+.right {
+  text-align: right;
 }

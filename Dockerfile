@@ -24,6 +24,7 @@ FROM base AS final
 COPY --from=builder /usr/local/app/build/epstein-file-review /usr/local/app/epstein-file-review
 COPY process_and_start.sh /usr/local/app/process_and_start.sh
 COPY convert_all.sh /usr/local/app/convert_all.sh
+COPY not_found.png /usr/local/app/not_found.png
 
 VOLUME /raw_data
 VOLUME /processed_data
