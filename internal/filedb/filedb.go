@@ -1,6 +1,7 @@
 package filedb
 
 import (
+	"math/rand"
 	"path"
 	"strings"
 
@@ -44,6 +45,8 @@ func FileType(filename string) string {
 		return "video"
 	case ".amr", ".m4a", ".mp3", ".opus", ".wav":
 		return "audio"
+	case ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg":
+		return "image"
 	default:
 		return "other"
 	}
@@ -69,4 +72,30 @@ func FileCount() int {
 
 func GetRandomFilename() string {
 	return getRandom(allFilenames)
+}
+
+func GetRandomFilenameByTypes(filetypes []string) string {
+	if len(filetypes) == 0 {
+		return getRandom(allFilenames)
+	}
+
+	countForFiletypes := lo.SumBy(filetypes, func(filetype string) int {
+		return len(filenamesByType[filetype])
+	})
+
+	if countForFiletypes == 0 {
+		return "not_found.png"
+	}
+
+	// get random integer in the range
+	randomIndex := rand.Intn(countForFiletypes)
+
+	for _, filetype := range filetypes {
+		filenames := filenamesByType[filetype]
+		if randomIndex < len(filenames) {
+			return filenames[randomIndex]
+		}
+		randomIndex -= len(filenames)
+	}
+	return "not_found.png"
 }

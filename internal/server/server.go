@@ -74,7 +74,8 @@ func Start(cfg env.Config) {
 		}
 
 		fmt.Printf("filetypes: %v\n", filetypes)
-		filename := filedb.GetRandomFilename()
+		// filename := filedb.GetRandomFilename()
+		filename := filedb.GetRandomFilenameByTypes(filetypes)
 
 		// filename = strings.TrimPrefix(filename, "/")
 		// get basename of the file
@@ -82,7 +83,7 @@ func Start(cfg env.Config) {
 		// fmt.Printf("Serving file: %q\n", filename)
 
 		switch filedb.FileType(filename) {
-		case "pdf", "video", "audio":
+		case "pdf", "video", "audio", "image":
 			return c.Inline(filename, base)
 		default:
 			return c.Attachment(filename, base)
