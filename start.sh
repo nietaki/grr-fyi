@@ -6,4 +6,4 @@ OUTPUT_DIR="/processed_data"
 ln -s /raw_data ./raw_data
 ln -s /processed_data ./processed_data
 
-find $INPUT_DIR -type f -not -path '*/.*' | grep -v 'DS9_' > ./all_files.txt
+find $INPUT_DIR -type f -not -path '*/.*' > ./all_files.txt
