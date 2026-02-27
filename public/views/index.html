@@ -4,7 +4,28 @@
     dir="ltr"
     x-data="combined"
 >
+
 <head>
+	<!-- HTML Meta Tags -->
+	<title>Epstein Roulette - examine a random file from {{.fileCount}} available!</title>
+	<meta name="description" content="Files categorised into video, audio and PDFiles for your peeping pleasure. PDFiles' content search coming soon!">
+
+	<!-- Facebook Meta Tags -->
+	<meta property="og:url" content="https://epsteinroulette.win/">
+	<meta property="og:type" content="website">
+	<meta property="og:title" content="Epstein Roulette - examine a random file from {{.fileCount}} available!">
+	<meta property="og:description" content="Files categorised into video, audio and PDFiles for your peeping pleasure. PDFiles' content search coming soon!">
+	<meta property="og:image" content="/img/epstein_roulette_cropped.png">
+
+	<!-- Twitter Meta Tags -->
+	<meta name="twitter:card" content="summary_large_image">
+	<meta property="twitter:domain" content="epsteinroulette.win">
+	<meta property="twitter:url" content="https://epsteinroulette.win/">
+	<meta name="twitter:title" content="Epstein Roulette - examine a random file from {{.fileCount}} available!">
+	<meta name="twitter:description" content="Files categorised into video, audio and PDFiles for your peeping pleasure. PDFiles' content search coming soon!">
+	<meta name="twitter:image" content="/img/epstein_roulette_cropped.png">
+
+	<!-- Meta Tags Generated via https://www.opengraph.xyz -->
 	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -36,7 +57,7 @@
 					<input type="checkbox" name="filetypes[]" value="other" id="other" />
 					<label for="other">other</label>
 				</fieldset>
-				<button type="submit">Another one!</button>
+				<button type="submit" class="contrast">Another one!</button>
 			</div>
 		</form>
 		<div class="row content">
@@ -48,7 +69,7 @@
 					{{.fileCount}} files so far
 			</div>
 			<div class="right">
-				Epstein Roulette, whipped up and hosted by <a href="https://nietaki.com/">nietaki</a>
+				<a href="https://epsteinroulette.win/">Epstein Roulette</a>, whipped up and hosted by <a href="https://nietaki.com/">nietaki</a>
 			</div>
 		</div>
   </div>

@@ -12,6 +12,8 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 	"github.com/nietaki/epstein-file-review/internal/env"
 	"github.com/nietaki/epstein-file-review/internal/filedb"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 type Template struct {
@@ -38,8 +40,9 @@ func CacheHeader(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 func indexValues() map[string]any {
+	p := message.NewPrinter(language.English)
 	return map[string]any{
-		"fileCount": filedb.FileCount(),
+		"fileCount": p.Sprintf("%d", filedb.FileCount()),
 	}
 }
 
@@ -55,7 +58,7 @@ func RandomFileHandler(c *echo.Context) error {
 	filename := filedb.GetRandomFilenameByTypes(filetypes)
 
 	// return ServeFilenameHandler(filename)(c)
-	return c.Redirect(302, "/files/"+filename)
+	return c.Redirect(303, "/files/"+filename)
 }
 
 func ServeFilenameHandler(filename string) echo.HandlerFunc {
