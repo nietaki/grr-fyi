@@ -92,6 +92,7 @@ func Start(cfg env.Config) {
 
 	// e.Use(NoContentRanges)
 	// e.Use(CacheHeader)
+	// e.Pre(middleware.NonWWWRedirect())
 	e.Use(middleware.RequestLogger())
 	e.Use(middleware.Recover())
 

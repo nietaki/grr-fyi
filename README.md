@@ -2,10 +2,14 @@
 
 ## TODO
 
-- [ ] go back to using the standard echo FS (symlinks?)
-- [ ] move the endpoint to a path instead of /
-- [ ] cache only the right things
-- [ ] iframes
-- [ ] deescalate the privileges of the server container
-- [ ] HTML, AlpineJS
+- [x] go back to using the standard echo FS (symlinks?)
+- [x] move the endpoint to a path instead of /
+- [x] cache only the right things
+- [x] iframes
+- [x] deescalate the privileges of the server container
+- [x] HTML, AlpineJS
+- [ ] manually filter the ds9
+- [ ] separate deployment for development
+- [ ] separate the processing from the startup
+- [ ] unskip the ds9
 
