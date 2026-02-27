@@ -30,6 +30,9 @@
 	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
 	<link rel="manifest" href="/site.webmanifest">
+
+	<script defer data-domain="epsteinroulette.win" src="/js/script.file-downloads.outbound-links.pageview-props.tagged-events.js"></script>
+	<script>window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }</script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 	<script src="/js/main.js"></script>
   <link rel="stylesheet" href="/css/pico/pico.grey.min.css">
@@ -37,7 +40,7 @@
 </head>
 <body>
   <div class="box">
-			<form action="/randomfile" method="post" target="file_frame">
+			<form action="/randomfile" method="post" target="file_frame" onsubmit="plausible('another one')">
 			<div class="row header grid">
 				<label>
 						<legend>(pdfs) containing text</legend>
