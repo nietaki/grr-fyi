@@ -15,7 +15,10 @@ body {
 }
 
 .box .row.header {
+  margin-left: 12px;
+  margin-right: 12px;
   margin-top: 12px;
+
   flex: 0 1 auto;
   /* The above is shorthand for:
   flex-grow: 0,

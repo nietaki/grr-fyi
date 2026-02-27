@@ -8,6 +8,7 @@
 - [x] iframes
 - [x] deescalate the privileges of the server container
 - [x] HTML, AlpineJS
+- [x] better header
 - [ ] manually filter the ds9
 - [ ] separate deployment for development
 - [ ] separate the processing from the startup
