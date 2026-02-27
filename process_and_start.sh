@@ -2,7 +2,7 @@
 
 bash convert_all.sh
 
-echo "starting server"
+bash start.sh
 
 /usr/local/app/epstein-file-review
 

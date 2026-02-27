@@ -5,7 +5,7 @@ RUN mkdir -p /usr/local/app/build
 # RUN apt-get update && apt-get install -y --no-install-recommends bash 
 WORKDIR /usr/local/app
 
-RUN apt-get update && apt-get install -y --no-install-recommends bash poppler-utils
+RUN apt-get update && apt-get install -y --no-install-recommends bash poppler-utils ffmpeg
 
 RUN chmod ugo+rwx /usr/local/app
 
@@ -23,8 +23,7 @@ FROM base AS final
 
 COPY --from=builder /usr/local/app/build/epstein-file-review /usr/local/app/epstein-file-review
 COPY not_found.png ./
-COPY process_and_start.sh ./
-COPY convert_all.sh ./
+COPY *.sh ./
 COPY public ./public
 COPY static ./static
 

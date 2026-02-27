@@ -12,5 +12,8 @@
 - [ ] manually filter the ds9
 - [ ] separate deployment for development
 - [ ] separate the processing from the startup
+- [ ] process wav files
+- [ ] serve converted wav files
 - [ ] unskip the ds9
+- [ ] text search: go get github.com/wizenheimer/blaze
 
