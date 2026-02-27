@@ -11,7 +11,7 @@ FILE_COUNT=$(find "$INPUT_DIR" -type f -iname "*.pdf" | wc -l)
 echo "Found $FILE_COUNT PDF files to convert."
 
 find $INPUT_DIR -type f  -not -path '*/.*' | sed 's/.*\.//' | sort | uniq -c
-find $INPUT_DIR -type f  -not -path '*/.*' > ./all_files.txt
+find $INPUT_DIR -type f  -not -path '*/.*' | grep -v 'DS9_' > ./all_files.txt
 
 FILE_NO=0
 
