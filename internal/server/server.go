@@ -22,11 +22,17 @@ func (t *Template) Render(c *echo.Context, w io.Writer, name string, data any) e
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
+func NoContentRanges(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c *echo.Context) error {
+		c.Response().Header()["Accept-Ranges"] = nil
+		err := next(c)
+		return err
+	}
+}
+
 func CacheHeader(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
-		if strings.Contains(c.Request().URL.Path, "random") {
-			c.Response().Header().Set("Cache-Control", "no-store")
-		}
+		c.Response().Header().Set(echo.HeaderCacheControl, "max-age=0, no-cache, no-store")
 		return next(c)
 	}
 }
@@ -34,6 +40,39 @@ func CacheHeader(next echo.HandlerFunc) echo.HandlerFunc {
 func indexValues() map[string]any {
 	return map[string]any{
 		"fileCount": filedb.FileCount(),
+	}
+}
+
+func RandomFileHandler(c *echo.Context) error {
+	filetypes, err := echo.FormValues[string](c, "filetypes[]")
+	if err != nil {
+		filetypes = []string{}
+		// return c.String(400, fmt.Sprintf("invalid filetype parameter: %v", categories))
+	}
+
+	fmt.Printf("filetypes: %v\n", filetypes)
+	// filename := filedb.GetRandomFilename()
+	filename := filedb.GetRandomFilenameByTypes(filetypes)
+
+	// return ServeFilenameHandler(filename)(c)
+	return c.Redirect(302, "/files/"+filename)
+}
+
+func ServeFilenameHandler(filename string) echo.HandlerFunc {
+	if filename == "" {
+		filename = "not_found.png"
+	}
+	return func(c *echo.Context) error {
+		if !(filename == "not_found.png" || strings.HasPrefix(filename, "raw_data/")) {
+			return c.String(404, "file not found")
+		}
+		base := path.Base(filename)
+		switch filedb.FileType(filename) {
+		case "pdf", "video", "audio", "image":
+			return c.Inline(filename, base)
+		default:
+			return c.Attachment(filename, base)
+		}
 	}
 }
 
@@ -48,46 +87,25 @@ func Start(cfg env.Config) {
 	e := echo.New()
 	e.Renderer = t
 
-	e.Use(CacheHeader)
+	// e.Use(NoContentRanges)
+	// e.Use(CacheHeader)
 	e.Use(middleware.RequestLogger())
 	e.Use(middleware.Recover())
 
 	e.Static("/", "static")
-
-	e.GET("/randomfilename", func(c *echo.Context) error {
-
-		// return c.String(200, "Hello, World!")
-		filename := filedb.GetRandomFilename()
-		return c.String(200, filename)
-	})
 
 	e.GET("/", func(c *echo.Context) error {
 		// hello world
 		return c.Render(200, "index.html", indexValues())
 	})
 
-	e.GET("/randomfile", func(c *echo.Context) error {
-		filetypes, err := echo.FormValues[string](c, "filetypes[]")
-		if err != nil {
-			filetypes = []string{}
-			// return c.String(400, fmt.Sprintf("invalid filetype parameter: %v", categories))
-		}
+	e.GET("/randomfile", RandomFileHandler, CacheHeader, NoContentRanges)
 
-		fmt.Printf("filetypes: %v\n", filetypes)
-		// filename := filedb.GetRandomFilename()
-		filename := filedb.GetRandomFilenameByTypes(filetypes)
+	e.POST("/randomfile", RandomFileHandler, CacheHeader, NoContentRanges)
 
-		// filename = strings.TrimPrefix(filename, "/")
-		// get basename of the file
-		base := path.Base(filename)
-		// fmt.Printf("Serving file: %q\n", filename)
-
-		switch filedb.FileType(filename) {
-		case "pdf", "video", "audio", "image":
-			return c.Inline(filename, base)
-		default:
-			return c.Attachment(filename, base)
-		}
+	e.GET("/files/*", func(c *echo.Context) error {
+		filename := c.Param("*")
+		return ServeFilenameHandler(filename)(c)
 	})
 
 	// concatenate the dot and the port
