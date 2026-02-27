@@ -7,9 +7,9 @@ find $INPUT_DIR -type f -not -path '*/.*' | sed 's/.*\.//' | sort | uniq -c
 
 FILE_NO=0
 
-find "$INPUT_DIR" -type f -not -path '*/.*'  -iname "*.pdf" | while read -r WAV_FILE; do
+find "$INPUT_DIR" -type f -not -path '*/.*'  -iname "*.wav" | while read -r WAV_FILE; do
     FILE_NO=$((FILE_NO + 1))
-    echo "mp3: $FILE_NO file."
+    echo "ogg: $FILE_NO file."
 
     RELATIVE_PATH="${WAV_FILE#$INPUT_DIR/}"
     
