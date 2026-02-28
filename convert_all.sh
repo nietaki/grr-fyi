@@ -29,7 +29,7 @@ find "$INPUT_DIR" -type f -not -path '*/.*'  -iname "*.wav" | while read -r WAV_
     ffmpeg -i "$WAV_FILE" "$OUTPUT_FILE"
 done
 
-FILE_COUNT=$(find "$INPUT_DIR" -type f -iname "*.pdf" | wc -l)
+FILE_COUNT=$(find "$INPUT_DIR" -type f -not -path '*/.*' -iname "*.pdf" | wc -l)
 echo "Found $FILE_COUNT PDF files to convert."
 
 FILE_NO=0

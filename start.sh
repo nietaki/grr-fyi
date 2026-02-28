@@ -7,3 +7,5 @@ ln -s /raw_data ./raw_data
 ln -s /processed_data ./processed_data
 
 find $INPUT_DIR -type f -not -path '*/.*' > ./all_files.txt
+
+./epstein-file-review
