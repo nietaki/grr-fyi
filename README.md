@@ -10,10 +10,22 @@
 - [x] HTML, AlpineJS
 - [x] better header
 - [ ] manually filter the ds9
-- [ ] separate deployment for development
-- [ ] separate the processing from the startup
-- [ ] process wav files
+- [x] separate deployment for development
+- [x] separate the processing from the startup
+- [x] process wav files
 - [ ] serve converted wav files
 - [ ] unskip the ds9
-- [ ] text search: go get github.com/wizenheimer/blaze
+- [ ] sqlite
+- [ ] sqlite shell
+
+## sqlite db schema
+
+- dataset
+- path
+- extension
+- filetype
+- filesize
+- text_contents
+- text_length
+- salt (not really a salt, sin(random())
 

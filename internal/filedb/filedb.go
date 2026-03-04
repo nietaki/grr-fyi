@@ -6,8 +6,10 @@ import (
 	"strings"
 
 	lo "github.com/samber/lo"
+	"zombiezen.com/go/sqlite/sqlitex"
 )
 
+var dbpool *sqlitex.Pool
 var allFilenames []string
 var filenamesByType map[string][]string
 
@@ -34,6 +36,37 @@ var filenamesByType map[string][]string
 // 2026-02-26 22:48:06.057676+00:002 xls
 // 2026-02-26 22:48:06.057681+00:0010 xlsx
 // 2026-02-26 22:48:06.057687+00:001 zip
+
+func migrate() {
+	// TODO
+	// https://pkg.go.dev/zombiezen.com/go/sqlite@v1.4.2/sqlitemigration
+}
+
+type DocumentRecord struct {
+	Dataset      string
+	Path         string
+	Extension    string
+	Filetype     string
+	Filesize     int64
+	TextContents string
+	TextLength   int
+}
+
+func Init() {
+	// TODO
+	// https://pkg.go.dev/zombiezen.com/go/sqlite#example-package-Http
+	migrate()
+}
+
+func AddDocument(originalPath string, textContentsPath string, dataset string) error {
+	// TODO
+	return nil
+}
+
+func Query(filetype string, datasets []string, text string) []string {
+	// TODO
+	return []string{}
+}
 
 func FileType(filename string) string {
 	ext := path.Ext(filename)
