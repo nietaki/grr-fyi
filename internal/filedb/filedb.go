@@ -1,17 +1,23 @@
 package filedb
 
 import (
+	"context"
 	"math/rand"
+	"os"
 	"path"
 	"strings"
 
 	lo "github.com/samber/lo"
+	"zombiezen.com/go/sqlite"
+	"zombiezen.com/go/sqlite/sqlitemigration"
 	"zombiezen.com/go/sqlite/sqlitex"
 )
 
 var dbpool *sqlitex.Pool
 var allFilenames []string
 var filenamesByType map[string][]string
+
+const dbPath = "./db/filedb.sqlite"
 
 // 2026-02-26 22:48:06.057510+00:001 3gp
 // 2026-02-26 22:48:06.057541+00:0011 DAT
@@ -37,9 +43,49 @@ var filenamesByType map[string][]string
 // 2026-02-26 22:48:06.057681+00:0010 xlsx
 // 2026-02-26 22:48:06.057687+00:001 zip
 
+var migrations []string = []string{
+	`CREATE TABLE documents (
+    id INTEGER PRIMARY KEY,
+    dataset TEXT,
+    path TEXT,
+    extension TEXT,
+    filetype TEXT,
+    filesize INTEGER,
+    text_contents TEXT,
+    text_length INTEGER,
+    salt REAL
+  );
+  `,
+	`CREATE INDEX idx_documents_filetype ON documents(filetype);`,
+	`CREATE INDEX idx_documents_dataset ON documents(dataset);`,
+	`CREATE INDEX idx_documents_text_length ON documents(text_length);`,
+	`CREATE VIRTUAL TABLE documents_fts USING fts5(text_contents, content='documents', content_rowid='id');`,
+	`CREATE TRIGGER documents_ai AFTER INSERT ON documents BEGIN
+    INSERT INTO documents_fts(rowid, text_contents) VALUES (new.id, new.text_contents);
+  END;`,
+}
+
 func migrate() {
-	// TODO
-	// https://pkg.go.dev/zombiezen.com/go/sqlite@v1.4.2/sqlitemigration
+	os.Remove(dbPath)
+	schema := sqlitemigration.Schema{
+		Migrations: migrations,
+	}
+	pool := sqlitemigration.NewPool(dbPath, schema, sqlitemigration.Options{
+		Flags: sqlite.OpenReadWrite | sqlite.OpenCreate,
+		OnError: func(err error) {
+			panic(err)
+		},
+	})
+	// Get a connection. This blocks until the migration completes.
+	conn, err := pool.Get(context.TODO())
+	if err != nil {
+		// handle error
+	}
+	defer pool.Put(conn)
+}
+
+func setupPool() {
+
 }
 
 type DocumentRecord struct {

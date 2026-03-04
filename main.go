@@ -18,6 +18,7 @@ func main() {
 	}
 	println("Current working directory: ", dir)
 	// read the `all_files.txt` file and split into non-empty lines
+	filedb.Init()
 
 	file, err := os.Open("all_files.txt")
 	if err != nil {

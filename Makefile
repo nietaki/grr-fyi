@@ -48,6 +48,7 @@ build:
 
 .PHONY: run
 run: build
+	rm -f ./db/filedb.sqlite || true
 	go run main.go
 
 .PHONY: clean
