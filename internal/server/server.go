@@ -12,6 +12,8 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 	"github.com/nietaki/epstein-file-review/internal/env"
 	"github.com/nietaki/epstein-file-review/internal/filedb"
+	"github.com/nietaki/epstein-file-review/internal/stats"
+	"github.com/nietaki/epstein-file-review/internal/util"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
@@ -41,8 +43,13 @@ func CacheHeader(next echo.HandlerFunc) echo.HandlerFunc {
 
 func indexValues() map[string]any {
 	p := message.NewPrinter(language.English)
+	memoryUsage, err := stats.MemoryUsage()
+	if err != nil {
+		memoryUsage = uint64(0)
+	}
 	return map[string]any{
-		"fileCount": p.Sprintf("%d", filedb.FileCount()),
+		"fileCount":   p.Sprintf("%d", filedb.FileCount()),
+		"memoryUsage": util.HumanizeMemory(memoryUsage),
 	}
 }
 

@@ -16,20 +16,22 @@ func indexFiles() {
 		panic(err)
 	}
 	scanner := bufio.NewScanner(file)
-	var files []string
+	fileCount := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line != "" {
 			line = strings.TrimPrefix(line, "/")
 			filedb.AddDocument(line)
-			files = append(files, line)
+			fileCount++
+
+			if fileCount%1000 == 0 {
+				println("Indexed ", fileCount, " files")
+			}
 		}
 	}
 
-	filedb.StoreFilenames(files)
-
 	// print file count
-	println("File count: ", len(files))
+	println("File count: ", fileCount)
 }
 
 func main() {
@@ -42,7 +44,7 @@ func main() {
 	// read the `all_files.txt` file and split into non-empty lines
 	filedb.Init()
 
-	indexFiles()
+	go indexFiles()
 
 	// foo := 1
 	cfg := env.Load()
