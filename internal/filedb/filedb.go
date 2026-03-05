@@ -204,7 +204,6 @@ func AddDocument(originalPath string) error {
 		return err
 	}
 
-	// TODO
 	return nil
 }
 
@@ -228,6 +227,10 @@ func FileType(filename string) string {
 	default:
 		return "other"
 	}
+}
+
+func AllFiletypes() []string {
+	return []string{"pdf", "video", "audio", "image", "other"}
 }
 
 func getRandom(filenames []string) string {
@@ -262,11 +265,12 @@ func FileCount() int {
 	return ct
 }
 
-func GetRandomFilename() string {
-	// get a random int in the range of 0 to a billion
+func getRandomSalt() float64 {
 	rnd := rand.Intn(1000000000)
-	targetSalt := math.Sin(float64(rnd))
+	return math.Sin(float64(rnd))
+}
 
+func GetRandomFilename() string {
 	conn, err := dbPool.Take(context.TODO())
 	if err != nil {
 		panic(err)
@@ -274,7 +278,7 @@ func GetRandomFilename() string {
 	defer dbPool.Put(conn)
 
 	stmt := conn.Prep("SELECT path FROM documents WHERE salt >= $target ORDER BY salt ASC LIMIT 1;")
-	stmt.SetFloat("$target", targetSalt)
+	stmt.SetFloat("$target", getRandomSalt())
 
 	filename, err := one(stmt, func(s *sqlite.Stmt) string {
 		return s.GetText("path")
@@ -288,27 +292,40 @@ func GetRandomFilename() string {
 }
 
 func GetRandomFilenameByTypes(filetypes []string) string {
+	conn, err := dbPool.Take(context.TODO())
+	if err != nil {
+		panic(err)
+	}
+
 	if len(filetypes) == 0 {
-		return getRandom(allFilenames)
+		filetypes = AllFiletypes()
 	}
+	defer dbPool.Put(conn)
 
-	countForFiletypes := lo.SumBy(filetypes, func(filetype string) int {
-		return len(filenamesByType[filetype])
-	})
+	questionMarks := lo.Map(filetypes, func(_ string, _ int) string { return "?" })
+	placeholders := strings.Join(questionMarks, ", ")
 
-	if countForFiletypes == 0 {
-		return "not_found.png"
-	}
+	query := fmt.Sprintf("SELECT path FROM documents WHERE filetype IN (%s) AND salt >= ? ORDER BY salt ASC LIMIT 1;", placeholders)
 
-	// get random integer in the range
-	randomIndex := rand.Intn(countForFiletypes)
+	fmt.Printf("Query: %s\n", query)
+
+	stmt := conn.Prep(query)
+
+	idx := 1
 
 	for _, filetype := range filetypes {
-		filenames := filenamesByType[filetype]
-		if randomIndex < len(filenames) {
-			return filenames[randomIndex]
-		}
-		randomIndex -= len(filenames)
+		stmt.BindText(idx, filetype)
+		idx++
 	}
-	return "not_found.png"
+
+	stmt.BindFloat(idx, getRandomSalt())
+
+	filename, err := one(stmt, func(s *sqlite.Stmt) string {
+		return s.GetText("path")
+	})
+	if err != nil {
+		fmt.Printf("Error getting random filename by types: %v\n", err)
+		return "not_found.png"
+	}
+	return filename
 }
