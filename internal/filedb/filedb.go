@@ -27,6 +27,7 @@ package filedb
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"path"
@@ -61,6 +62,7 @@ var migrations []string = []string{
 	`CREATE INDEX idx_documents_filetype ON documents(filetype);`,
 	`CREATE INDEX idx_documents_dataset ON documents(dataset);`,
 	`CREATE INDEX idx_documents_filesize ON documents(filesize);`,
+	`CREATE INDEX idx_documents_salt ON documents(salt);`,
 	`CREATE VIRTUAL TABLE documents_fts USING fts5(text_contents, tokenize='trigram case_sensitive 0 remove_diacritics 1', content='documents', content_rowid='id');`,
 	`CREATE TRIGGER documents_ai AFTER INSERT ON documents BEGIN
     INSERT INTO documents_fts(rowid, text_contents) VALUES (new.id, new.text_contents);
@@ -142,16 +144,16 @@ func one[T any](stmt *sqlite.Stmt, extractor func(*sqlite.Stmt) T) (T, error) {
 	return extractor(stmt), nil
 }
 
-func zero(stmt *sqlite.Stmt) (*sqlite.Stmt, error) {
+func zero(stmt *sqlite.Stmt) error {
 	hasRow, err := stmt.Step()
 	if err != nil {
 		fmt.Printf("Error executing a zero() query: %v\n", err)
-		return nil, err
+		return err
 	}
 	if hasRow {
-		return nil, NewQueryError("expected zero rows, but got at least one")
+		return NewQueryError("expected zero rows, but got at least one")
 	}
-	return stmt, nil
+	return nil
 }
 
 func AddDocument(originalPath string) error {
@@ -195,7 +197,7 @@ func AddDocument(originalPath string) error {
 	stmt.SetText("$textContents", contents)
 	stmt.SetInt64("$textLength", int64(len(contents)))
 
-	_, err = zero(stmt)
+	err = zero(stmt)
 
 	if err != nil {
 		fmt.Printf("Error inserting document: %v\n", err)
@@ -240,10 +242,6 @@ func getRandom(filenames []string) string {
 func StoreFilenames(f []string) {
 	allFilenames = f
 	filenamesByType = lo.GroupBy(allFilenames, FileType)
-
-	for _, f := range allFilenames {
-		AddDocument(f)
-	}
 }
 
 func FileCount() int {
@@ -254,7 +252,6 @@ func FileCount() int {
 	defer dbPool.Put(conn)
 
 	stmt := conn.Prep("SELECT COUNT(*) as ct FROM documents;")
-	defer stmt.Reset()
 	ct, err := one(stmt, func(s *sqlite.Stmt) int {
 		return int(s.GetInt64("ct"))
 	})
@@ -266,7 +263,28 @@ func FileCount() int {
 }
 
 func GetRandomFilename() string {
-	return getRandom(allFilenames)
+	// get a random int in the range of 0 to a billion
+	rnd := rand.Intn(1000000000)
+	targetSalt := math.Sin(float64(rnd))
+
+	conn, err := dbPool.Take(context.TODO())
+	if err != nil {
+		panic(err)
+	}
+	defer dbPool.Put(conn)
+
+	stmt := conn.Prep("SELECT path FROM documents WHERE salt >= $target ORDER BY salt ASC LIMIT 1;")
+	stmt.SetFloat("$target", targetSalt)
+
+	filename, err := one(stmt, func(s *sqlite.Stmt) string {
+		return s.GetText("path")
+	})
+	if err != nil {
+		fmt.Printf("Error getting random filename: %v\n", err)
+		return "not_found.png"
+	}
+
+	return filename
 }
 
 func GetRandomFilenameByTypes(filetypes []string) string {

@@ -10,6 +10,28 @@ import (
 	"github.com/nietaki/epstein-file-review/internal/server"
 )
 
+func indexFiles() {
+	file, err := os.Open("all_files.txt")
+	if err != nil {
+		panic(err)
+	}
+	scanner := bufio.NewScanner(file)
+	var files []string
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			line = strings.TrimPrefix(line, "/")
+			filedb.AddDocument(line)
+			files = append(files, line)
+		}
+	}
+
+	filedb.StoreFilenames(files)
+
+	// print file count
+	println("File count: ", len(files))
+}
+
 func main() {
 	// print current working directory
 	dir, err := os.Getwd()
@@ -20,23 +42,7 @@ func main() {
 	// read the `all_files.txt` file and split into non-empty lines
 	filedb.Init()
 
-	file, err := os.Open("all_files.txt")
-	if err != nil {
-		panic(err)
-	}
-	scanner := bufio.NewScanner(file)
-	var files []string
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line != "" {
-			files = append(files, strings.TrimPrefix(line, "/"))
-		}
-	}
-
-	filedb.StoreFilenames(files)
-
-	// print file count
-	println("File count: ", len(files))
+	indexFiles()
 
 	// foo := 1
 	cfg := env.Load()
