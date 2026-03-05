@@ -1,24 +1,5 @@
 package filedb
 
-import (
-	"context"
-	"math/rand"
-	"os"
-	"path"
-	"strings"
-
-	lo "github.com/samber/lo"
-	"zombiezen.com/go/sqlite"
-	"zombiezen.com/go/sqlite/sqlitemigration"
-	"zombiezen.com/go/sqlite/sqlitex"
-)
-
-var dbpool *sqlitex.Pool
-var allFilenames []string
-var filenamesByType map[string][]string
-
-const dbPath = "./db/filedb.sqlite"
-
 // 2026-02-26 22:48:06.057510+00:001 3gp
 // 2026-02-26 22:48:06.057541+00:0011 DAT
 // 2026-02-26 22:48:06.057549+00:001 DII
@@ -43,6 +24,27 @@ const dbPath = "./db/filedb.sqlite"
 // 2026-02-26 22:48:06.057681+00:0010 xlsx
 // 2026-02-26 22:48:06.057687+00:001 zip
 
+import (
+	"context"
+	"fmt"
+	"math/rand"
+	"os"
+	"path"
+	"regexp"
+	"strings"
+
+	lo "github.com/samber/lo"
+	"zombiezen.com/go/sqlite"
+	"zombiezen.com/go/sqlite/sqlitemigration"
+	"zombiezen.com/go/sqlite/sqlitex"
+)
+
+var dbPool *sqlitex.Pool
+var allFilenames []string
+var filenamesByType map[string][]string
+
+const dbPath = "./db/filedb.sqlite"
+
 var migrations []string = []string{
 	`CREATE TABLE documents (
     id INTEGER PRIMARY KEY,
@@ -58,8 +60,8 @@ var migrations []string = []string{
   `,
 	`CREATE INDEX idx_documents_filetype ON documents(filetype);`,
 	`CREATE INDEX idx_documents_dataset ON documents(dataset);`,
-	`CREATE INDEX idx_documents_text_length ON documents(text_length);`,
-	`CREATE VIRTUAL TABLE documents_fts USING fts5(text_contents, content='documents', content_rowid='id');`,
+	`CREATE INDEX idx_documents_filesize ON documents(filesize);`,
+	`CREATE VIRTUAL TABLE documents_fts USING fts5(text_contents, tokenize='trigram case_sensitive 0 remove_diacritics 1', content='documents', content_rowid='id');`,
 	`CREATE TRIGGER documents_ai AFTER INSERT ON documents BEGIN
     INSERT INTO documents_fts(rowid, text_contents) VALUES (new.id, new.text_contents);
   END;`,
@@ -85,7 +87,16 @@ func migrate() {
 }
 
 func setupPool() {
-
+	// https://pkg.go.dev/zombiezen.com/go/sqlite#example-package-Http
+	poolOptions := sqlitex.PoolOptions{
+		Flags:    sqlite.OpenReadWrite,
+		PoolSize: 10, // Optional: set maximum number of open connections
+	}
+	var err error
+	dbPool, err = sqlitex.NewPool(dbPath, poolOptions)
+	if err != nil {
+		panic(err)
+	}
 }
 
 type DocumentRecord struct {
@@ -98,13 +109,99 @@ type DocumentRecord struct {
 	TextLength   int
 }
 
-func Init() {
-	// TODO
-	// https://pkg.go.dev/zombiezen.com/go/sqlite#example-package-Http
-	migrate()
+type QueryError struct {
+	Message string
 }
 
-func AddDocument(originalPath string, textContentsPath string, dataset string) error {
+func (e *QueryError) Error() string {
+	return e.Message
+}
+
+func NewQueryError(message string) *QueryError {
+	return &QueryError{Message: message}
+}
+
+func Init() {
+	migrate()
+	setupPool()
+}
+
+func one[T any](stmt *sqlite.Stmt, extractor func(*sqlite.Stmt) T) (T, error) {
+	var defaultValue T
+	hasRow, err := stmt.Step()
+	if err != nil {
+		fmt.Printf("Error executing a one() query: %v\n", err)
+		return defaultValue, err
+	}
+	if !hasRow {
+		return defaultValue, NewQueryError("no rows found")
+	}
+	// stmt.()
+	defer stmt.Reset()
+
+	return extractor(stmt), nil
+}
+
+func zero(stmt *sqlite.Stmt) (*sqlite.Stmt, error) {
+	hasRow, err := stmt.Step()
+	if err != nil {
+		fmt.Printf("Error executing a zero() query: %v\n", err)
+		return nil, err
+	}
+	if hasRow {
+		return nil, NewQueryError("expected zero rows, but got at least one")
+	}
+	return stmt, nil
+}
+
+func AddDocument(originalPath string) error {
+	// TODO context
+	conn, err := dbPool.Take(context.TODO())
+	defer dbPool.Put(conn)
+	if err != nil {
+		panic(err)
+	}
+
+	textContentsPath := strings.Replace(originalPath, "raw_data/", "processed_data/", 1)
+	textContentsPath = textContentsPath + ".content.txt"
+
+	stmt := conn.Prep("INSERT INTO documents (dataset, path, extension, filetype, filesize, text_contents, text_length, salt) VALUES ($dataset, $path, $extension, $filetype, $filesize, $textContents, $textLength, sin(random()))")
+
+	dataset := strings.Split(originalPath, "/")[1]
+	stmt.SetText("$dataset", dataset)
+	stmt.SetText("$path", originalPath)
+	ext := path.Ext(originalPath)
+	stmt.SetText("$extension", ext)
+	filetype := FileType(originalPath)
+	stmt.SetText("$filetype", filetype)
+	fileInfo, err := os.Stat(originalPath)
+	if err != nil {
+		fmt.Printf("Error getting file info for %s: %v\n", originalPath, err)
+		return err
+	}
+	stmt.SetInt64("$filesize", fileInfo.Size())
+
+	var contents string
+	byteContents, err := os.ReadFile(textContentsPath)
+	if err != nil {
+		contents = ""
+	} else {
+		contents = string(byteContents)
+		// clean up the contents
+		re := regexp.MustCompile(`\s+`)
+		contents = re.ReplaceAllString(contents, " ")
+	}
+
+	stmt.SetText("$textContents", contents)
+	stmt.SetInt64("$textLength", int64(len(contents)))
+
+	_, err = zero(stmt)
+
+	if err != nil {
+		fmt.Printf("Error inserting document: %v\n", err)
+		return err
+	}
+
 	// TODO
 	return nil
 }
@@ -143,10 +240,29 @@ func getRandom(filenames []string) string {
 func StoreFilenames(f []string) {
 	allFilenames = f
 	filenamesByType = lo.GroupBy(allFilenames, FileType)
+
+	for _, f := range allFilenames {
+		AddDocument(f)
+	}
 }
 
 func FileCount() int {
-	return len(allFilenames)
+	conn, err := dbPool.Take(context.TODO())
+	if err != nil {
+		return -1
+	}
+	defer dbPool.Put(conn)
+
+	stmt := conn.Prep("SELECT COUNT(*) as ct FROM documents;")
+	defer stmt.Reset()
+	ct, err := one(stmt, func(s *sqlite.Stmt) int {
+		return int(s.GetInt64("ct"))
+	})
+	if err != nil {
+		fmt.Printf("Error counting documents: %v\n", err)
+		return -1
+	}
+	return ct
 }
 
 func GetRandomFilename() string {

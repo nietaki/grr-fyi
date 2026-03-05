@@ -5,8 +5,8 @@ import "testing"
 func TestDefaultValues(t *testing.T) {
 	cfg := Load()
 
-	if cfg.ServerPort != "50666" {
-		t.Errorf("Expected default ServerPort to be '50666', got '%s'", cfg.ServerPort)
+	if cfg.ServerPort != "30666" {
+		t.Errorf("Expected default ServerPort to be '30666', got '%s'", cfg.ServerPort)
 	}
 }
 

@@ -32,6 +32,7 @@ body {
 }
 
 .box .row.footer {
+  display: flex;
   flex: 0 1 40px;
   margin: 6px 16px;
 }
@@ -41,9 +42,11 @@ legend {
 }
 
 .left {
+  flex: initial;
   text-align: left;
 }
 
 .right {
+  flex: auto;
   text-align: right;
 }

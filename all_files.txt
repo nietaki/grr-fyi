@@ -1,5 +1,5 @@
-/raw_data/lorem_ipsum.pdf
-/raw_data/earth.mp4
-/raw_data/drylab.pdf
-/raw_data/invoicesample.pdf
-/raw_data/somatosensory.pdf
+/raw_data/VOL1/lorem_ipsum.pdf
+/raw_data/VOL1/earth.mp4
+/raw_data/VOL1/drylab.pdf
+/raw_data/VOL1/invoicesample.pdf
+/raw_data/VOL1/somatosensory.pdf
