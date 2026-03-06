@@ -60,6 +60,18 @@ func RandomFileHandler(c *echo.Context) error {
 		// return c.String(400, fmt.Sprintf("invalid filetype parameter: %v", categories))
 	}
 
+	query, err := echo.FormValue[string](c, "query")
+	if err != nil {
+		query = ""
+	}
+
+	query = strings.TrimSpace(query)
+
+	if query != "" {
+		filename := filedb.GetRandomFilenameByQuery(query)
+		return c.Redirect(303, "/files/"+filename)
+	}
+
 	fmt.Printf("filetypes: %v\n", filetypes)
 	// filename := filedb.GetRandomFilename()
 	filename := filedb.GetRandomFilenameByTypes(filetypes)

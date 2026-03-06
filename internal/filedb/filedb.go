@@ -57,9 +57,9 @@ var migrations []string = []string{
     salt REAL
   );
   `,
-	`CREATE INDEX idx_documents_filetype ON documents(filetype);`,
-	`CREATE INDEX idx_documents_dataset ON documents(dataset);`,
-	`CREATE INDEX idx_documents_filesize ON documents(filesize);`,
+	`CREATE INDEX idx_documents_filetype ON documents(filetype, salt);`,
+	`CREATE INDEX idx_documents_dataset ON documents(dataset, salt);`,
+	// `CREATE INDEX idx_documents_filesize ON documents(filesize);`,
 	`CREATE INDEX idx_documents_salt ON documents(salt);`,
 	`CREATE VIRTUAL TABLE documents_fts USING fts5(text_contents, tokenize='trigram case_sensitive 0 remove_diacritics 1', content='documents', content_rowid='id');`,
 	`CREATE TRIGGER documents_ai AFTER INSERT ON documents BEGIN
@@ -136,7 +136,7 @@ func one[T any](stmt *sqlite.Stmt, extractor func(*sqlite.Stmt) T) (T, error) {
 	if !hasRow {
 		return defaultValue, NewQueryError("no rows found")
 	}
-	// stmt.()
+	// will work even if there's multiple rows
 	defer stmt.Reset()
 
 	return extractor(stmt), nil
@@ -153,6 +153,8 @@ func zero(stmt *sqlite.Stmt) error {
 	}
 	return nil
 }
+
+var spaceRegex *regexp.Regexp = regexp.MustCompile(`\s+`)
 
 func AddDocument(originalPath string) error {
 	// TODO context
@@ -188,8 +190,7 @@ func AddDocument(originalPath string) error {
 	} else {
 		contents = string(byteContents)
 		// clean up the contents
-		re := regexp.MustCompile(`\s+`)
-		contents = re.ReplaceAllString(contents, " ")
+		contents = spaceRegex.ReplaceAllString(contents, " ")
 	}
 
 	stmt.SetText("$textContents", contents)
@@ -203,11 +204,6 @@ func AddDocument(originalPath string) error {
 	}
 
 	return nil
-}
-
-func Query(filetype string, datasets []string, text string) []string {
-	// TODO
-	return []string{}
 }
 
 func FileType(filename string) string {
@@ -261,7 +257,7 @@ func GetRandomFilename() string {
 	}
 	defer dbPool.Put(conn)
 
-	stmt := conn.Prep("SELECT path FROM documents WHERE salt >= $target ORDER BY salt ASC LIMIT 1;")
+	stmt := conn.Prep("SELECT path FROM documents ORDER BY abs(salt - $target) ASC LIMIT 1;")
 	stmt.SetFloat("$target", getRandomSalt())
 
 	filename, err := one(stmt, func(s *sqlite.Stmt) string {
@@ -269,6 +265,33 @@ func GetRandomFilename() string {
 	})
 	if err != nil {
 		fmt.Printf("Error getting random filename: %v\n", err)
+		return "not_found.png"
+	}
+
+	return filename
+}
+
+func GetRandomFilenameByQuery(query string) string {
+	conn, err := dbPool.Take(context.TODO())
+	if err != nil {
+		panic(err)
+	}
+	defer dbPool.Put(conn)
+
+	stmt := conn.Prep(`
+    SELECT path 
+    FROM documents 
+    INNER JOIN documents_fts ON documents.id = documents_fts.rowid 
+    WHERE documents_fts MATCH ? 
+    ORDER BY abs(salt - ?) ASC LIMIT 1;`)
+	stmt.BindText(1, query)
+	stmt.BindFloat(2, getRandomSalt())
+
+	filename, err := one(stmt, func(s *sqlite.Stmt) string {
+		return s.GetText("path")
+	})
+	if err != nil {
+		fmt.Printf("Error getting random filename by contents: %v\n", err)
 		return "not_found.png"
 	}
 
@@ -291,7 +314,7 @@ func GetRandomFilenameByTypes(filetypes []string) string {
 
 	query := fmt.Sprintf("SELECT path FROM documents WHERE filetype IN (%s) AND salt >= ? ORDER BY salt ASC LIMIT 1;", placeholders)
 
-	fmt.Printf("Query: %s\n", query)
+	// fmt.Printf("Query: %s\n", query)
 
 	stmt := conn.Prep(query)
 

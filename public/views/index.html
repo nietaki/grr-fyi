@@ -8,13 +8,13 @@
 <head>
 	<!-- HTML Meta Tags -->
 	<title>Epstein Roulette - examine a random file from {{.fileCount}} available!</title>
-	<meta name="description" content="Files categorised into video, audio and PDFiles for your peeping pleasure. PDFiles' content search coming soon!">
+	<meta name="description" content="Files categorised into video, audio and PDFiles for your peeping pleasure. PDFiles' content search now available!">
 
 	<!-- Facebook Meta Tags -->
 	<meta property="og:url" content="https://epsteinroulette.win/">
 	<meta property="og:type" content="website">
 	<meta property="og:title" content="Epstein Roulette - examine a random file from {{.fileCount}} available!">
-	<meta property="og:description" content="Files categorised into video, audio and PDFiles for your peeping pleasure. PDFiles' content search coming soon!">
+	<meta property="og:description" content="Files categorised into video, audio and PDFiles for your peeping pleasure. PDFiles' content search now available!">
 	<meta property="og:image" content="/img/og.jpg">
 
 	<!-- Twitter Meta Tags -->
@@ -22,7 +22,7 @@
 	<meta property="twitter:domain" content="epsteinroulette.win">
 	<meta property="twitter:url" content="https://epsteinroulette.win/">
 	<meta name="twitter:title" content="Epstein Roulette - examine a random file from {{.fileCount}} available!">
-	<meta name="twitter:description" content="Files categorised into video, audio and PDFiles for your peeping pleasure. PDFiles' content search coming soon!">
+	<meta name="twitter:description" content="Files categorised into video, audio and PDFiles for your peeping pleasure. PDFiles' content search now available!">
 	<meta name="twitter:image" content="/img/og.jpg">
 
 	<!-- Meta Tags Generated via https://www.opengraph.xyz -->
@@ -46,7 +46,7 @@
 				<label>
 						<legend>(pdfs) containing text</legend>
 						<div role="search">
-							<input type="search" placeholder="coming soon..." disabled />
+							<input type="search" placeholder="use quotes to search for a phrase" name="query" id="query" />
 							<input type="reset" value="clear" />
 						</div>
 				</label>
@@ -71,7 +71,7 @@
 		<div class="row footer grid">
 			<div class="left">
 					<small>
-						{{.fileCount}} files indexed, server+db uses {{.memoryUsage}} of memory
+						{{.fileCount}} files indexed, server+db uses {{.memoryUsage}} of RAM
 					</small>
 			</div>
 			<div class="right">
