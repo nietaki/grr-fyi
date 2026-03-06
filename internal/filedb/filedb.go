@@ -227,8 +227,8 @@ func AllFiletypes() []string {
 	return []string{"pdf", "video", "audio", "image", "other"}
 }
 
-func FileCount() int {
-	conn, err := dbPool.Take(context.TODO())
+func FileCount(ctx context.Context) int {
+	conn, err := dbPool.Take(ctx)
 	if err != nil {
 		return -1
 	}
@@ -250,29 +250,29 @@ func getRandomSalt() float64 {
 	return math.Sin(float64(rnd))
 }
 
-func GetRandomFilename() string {
-	conn, err := dbPool.Take(context.TODO())
-	if err != nil {
-		panic(err)
-	}
-	defer dbPool.Put(conn)
+// func GetRandomFilename(ctx context.Context) string {
+// 	conn, err := dbPool.Take(ctx)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	defer dbPool.Put(conn)
 
-	stmt := conn.Prep("SELECT path FROM documents ORDER BY abs(salt - $target) ASC LIMIT 1;")
-	stmt.SetFloat("$target", getRandomSalt())
+// 	stmt := conn.Prep("SELECT path FROM documents ORDER BY abs(salt - $target) ASC LIMIT 1;")
+// 	stmt.SetFloat("$target", getRandomSalt())
 
-	filename, err := one(stmt, func(s *sqlite.Stmt) string {
-		return s.GetText("path")
-	})
-	if err != nil {
-		fmt.Printf("Error getting random filename: %v\n", err)
-		return "not_found.png"
-	}
+// 	filename, err := one(stmt, func(s *sqlite.Stmt) string {
+// 		return s.GetText("path")
+// 	})
+// 	if err != nil {
+// 		fmt.Printf("Error getting random filename: %v\n", err)
+// 		return "not_found.png"
+// 	}
 
-	return filename
-}
+// 	return filename
+// }
 
-func GetRandomFilenameByQuery(query string) string {
-	conn, err := dbPool.Take(context.TODO())
+func GetRandomFilenameByQuery(ctx context.Context, query string) string {
+	conn, err := dbPool.Take(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -298,8 +298,8 @@ func GetRandomFilenameByQuery(query string) string {
 	return filename
 }
 
-func GetRandomFilenameByTypes(filetypes []string) string {
-	conn, err := dbPool.Take(context.TODO())
+func GetRandomFilenameByTypes(ctx context.Context, filetypes []string) string {
+	conn, err := dbPool.Take(ctx)
 	if err != nil {
 		panic(err)
 	}

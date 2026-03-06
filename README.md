@@ -14,9 +14,12 @@
 - [x] separate the processing from the startup
 - [x] process wav files
 - [ ] serve converted wav files
-- [ ] unskip the ds9
-- [ ] sqlite
+- [x] unskip the ds9
+- [x] sqlite
 - [ ] sqlite shell
+- [ ] remove panics
+- [ ] handle (and learn) about context (cancellation)
+- [ ] JWT-like auth for the files
 
 ## sqlite db schema
 

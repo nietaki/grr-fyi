@@ -41,14 +41,14 @@ func CacheHeader(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func indexValues() map[string]any {
+func indexValues(ctx context.Context) map[string]any {
 	p := message.NewPrinter(language.English)
 	memoryUsage, err := stats.MemoryUsage()
 	if err != nil {
 		memoryUsage = uint64(0)
 	}
 	return map[string]any{
-		"fileCount":   p.Sprintf("%d", filedb.FileCount()),
+		"fileCount":   p.Sprintf("%d", filedb.FileCount(ctx)),
 		"memoryUsage": util.HumanizeMemory(memoryUsage),
 	}
 }
@@ -67,14 +67,16 @@ func RandomFileHandler(c *echo.Context) error {
 
 	query = strings.TrimSpace(query)
 
+	ctx := c.Request().Context()
+
 	if query != "" {
-		filename := filedb.GetRandomFilenameByQuery(query)
+		filename := filedb.GetRandomFilenameByQuery(ctx, query)
 		return c.Redirect(303, "/files/"+filename)
 	}
 
 	fmt.Printf("filetypes: %v\n", filetypes)
 	// filename := filedb.GetRandomFilename()
-	filename := filedb.GetRandomFilenameByTypes(filetypes)
+	filename := filedb.GetRandomFilenameByTypes(ctx, filetypes)
 
 	// return ServeFilenameHandler(filename)(c)
 	return c.Redirect(303, "/files/"+filename)
@@ -98,7 +100,7 @@ func ServeFilenameHandler(filename string) echo.HandlerFunc {
 	}
 }
 
-func Start(cfg env.Config) {
+func Start(ctx context.Context, cfg env.Config) {
 	// config := echo.Config{
 	// 	Filesystem: os.DirFS("/"),
 	// }
@@ -119,7 +121,7 @@ func Start(cfg env.Config) {
 
 	e.GET("/", func(c *echo.Context) error {
 		// hello world
-		return c.Render(200, "index.html", indexValues())
+		return c.Render(200, "index.html", indexValues(c.Request().Context()))
 	})
 
 	e.GET("/randomfile", RandomFileHandler, CacheHeader, NoContentRanges)
@@ -136,7 +138,7 @@ func Start(cfg env.Config) {
 	// Start server
 	sc := echo.StartConfig{Address: portSpec}
 	// e.Logger.Error(e.Start(portSpec))
-	if err := sc.Start(context.Background(), e); err != nil {
+	if err := sc.Start(ctx, e); err != nil {
 		e.Logger.Error("failed to start server", "error", err)
 	}
 }
