@@ -13,6 +13,7 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 	"github.com/nietaki/epstein-file-review/internal/env"
 	"github.com/nietaki/epstein-file-review/internal/filedb"
+	"github.com/nietaki/epstein-file-review/internal/signing"
 	"github.com/nietaki/epstein-file-review/internal/stats"
 	"github.com/nietaki/epstein-file-review/internal/util"
 	"golang.org/x/text/language"
@@ -82,7 +83,7 @@ func RandomFileHandler(c *echo.Context) error {
 			fmt.Printf("Error getting random filename by query: %v\n", err)
 			return notFoundError(c)
 		}
-		return c.Redirect(303, "/files/"+filename)
+		return c.Redirect(303, "/files/"+filename+"?"+signing.SigningQueryString(filename))
 	}
 
 	filename, err := filedb.GetRandomFilenameByTypes(ctx, filetypes)
@@ -91,14 +92,21 @@ func RandomFileHandler(c *echo.Context) error {
 		return notFoundError(c)
 	}
 
-	return c.Redirect(303, "/files/"+filename)
+	return c.Redirect(303, "/files/"+filename+"?"+signing.SigningQueryString(filename))
 }
 
 func ServeFilenameHandler(filename string) echo.HandlerFunc {
-	if filename == "" {
-		filename = "not_found.png"
-	}
 	return func(c *echo.Context) error {
+		tss := c.QueryParam("ts")
+		sig := c.QueryParam("sig")
+		ts := signing.ParseTs(tss)
+
+		err := signing.VerifySignature(filename, ts, sig)
+		if err != nil {
+			fmt.Printf("Signature verification failed for file %s: %v\n", filename, err)
+			return c.String(403, "forbidden")
+		}
+
 		if !(filename == "not_found.png" || strings.HasPrefix(filename, "raw_data/")) {
 			return c.String(404, "file not found")
 		}
