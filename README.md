@@ -17,8 +17,8 @@
 - [x] unskip the ds9
 - [x] sqlite
 - [ ] sqlite shell
-- [ ] remove panics
-- [ ] handle (and learn) about context (cancellation)
+- [x] remove panics
+- [x] handle (and learn) about context (cancellation)
 - [ ] JWT-like auth for the files
 
 ## sqlite db schema

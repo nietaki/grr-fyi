@@ -67,7 +67,7 @@ var migrations []string = []string{
   END;`,
 }
 
-func migrate() {
+func migrate(ctx context.Context) error {
 	os.Remove(dbPath)
 	schema := sqlitemigration.Schema{
 		Migrations: migrations,
@@ -75,18 +75,16 @@ func migrate() {
 	pool := sqlitemigration.NewPool(dbPath, schema, sqlitemigration.Options{
 		Flags: sqlite.OpenReadWrite | sqlite.OpenCreate,
 		OnError: func(err error) {
-			panic(err)
+			panic(err) // this one is ok
 		},
 	})
 	// Get a connection. This blocks until the migration completes.
-	conn, err := pool.Get(context.TODO())
-	if err != nil {
-		// handle error
-	}
+	conn, err := pool.Get(ctx)
 	defer pool.Put(conn)
+	return err
 }
 
-func setupPool() {
+func setupPool() error {
 	// https://pkg.go.dev/zombiezen.com/go/sqlite#example-package-Http
 	poolOptions := sqlitex.PoolOptions{
 		Flags:    sqlite.OpenReadWrite,
@@ -94,9 +92,7 @@ func setupPool() {
 	}
 	var err error
 	dbPool, err = sqlitex.NewPool(dbPath, poolOptions)
-	if err != nil {
-		panic(err)
-	}
+	return err
 }
 
 type DocumentRecord struct {
@@ -121,14 +117,19 @@ func NewQueryError(message string) *QueryError {
 	return &QueryError{Message: message}
 }
 
-func Init() {
-	migrate()
-	setupPool()
+func Init(ctx context.Context) error {
+	err := migrate(ctx)
+	if err != nil {
+		return err
+	}
+	return setupPool()
 }
 
 func one[T any](stmt *sqlite.Stmt, extractor func(*sqlite.Stmt) T) (T, error) {
 	var defaultValue T
 	hasRow, err := stmt.Step()
+	// will work even if there's multiple rows
+	defer stmt.Reset()
 	if err != nil {
 		fmt.Printf("Error executing a one() query: %v\n", err)
 		return defaultValue, err
@@ -136,8 +137,6 @@ func one[T any](stmt *sqlite.Stmt, extractor func(*sqlite.Stmt) T) (T, error) {
 	if !hasRow {
 		return defaultValue, NewQueryError("no rows found")
 	}
-	// will work even if there's multiple rows
-	defer stmt.Reset()
 
 	return extractor(stmt), nil
 }
@@ -156,12 +155,11 @@ func zero(stmt *sqlite.Stmt) error {
 
 var spaceRegex *regexp.Regexp = regexp.MustCompile(`\s+`)
 
-func AddDocument(originalPath string) error {
-	// TODO context
-	conn, err := dbPool.Take(context.TODO())
+func AddDocument(ctx context.Context, originalPath string) error {
+	conn, err := dbPool.Take(ctx)
 	defer dbPool.Put(conn)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	textContentsPath := strings.Replace(originalPath, "raw_data/", "processed_data/", 1)
@@ -227,12 +225,12 @@ func AllFiletypes() []string {
 	return []string{"pdf", "video", "audio", "image", "other"}
 }
 
-func FileCount(ctx context.Context) int {
+func FileCount(ctx context.Context) (int, error) {
 	conn, err := dbPool.Take(ctx)
-	if err != nil {
-		return -1
-	}
 	defer dbPool.Put(conn)
+	if err != nil {
+		return -1, err
+	}
 
 	stmt := conn.Prep("SELECT COUNT(*) as ct FROM documents;")
 	ct, err := one(stmt, func(s *sqlite.Stmt) int {
@@ -240,9 +238,9 @@ func FileCount(ctx context.Context) int {
 	})
 	if err != nil {
 		fmt.Printf("Error counting documents: %v\n", err)
-		return -1
+		return -1, err
 	}
-	return ct
+	return ct, nil
 }
 
 func getRandomSalt() float64 {
@@ -271,12 +269,12 @@ func getRandomSalt() float64 {
 // 	return filename
 // }
 
-func GetRandomFilenameByQuery(ctx context.Context, query string) string {
+func GetRandomFilenameByQuery(ctx context.Context, query string) (string, error) {
 	conn, err := dbPool.Take(ctx)
-	if err != nil {
-		panic(err)
-	}
 	defer dbPool.Put(conn)
+	if err != nil {
+		return "not_found.png", err
+	}
 
 	stmt := conn.Prep(`
     SELECT path 
@@ -292,22 +290,22 @@ func GetRandomFilenameByQuery(ctx context.Context, query string) string {
 	})
 	if err != nil {
 		fmt.Printf("Error getting random filename by contents: %v\n", err)
-		return "not_found.png"
+		return "not_found.png", nil
 	}
 
-	return filename
+	return filename, nil
 }
 
-func GetRandomFilenameByTypes(ctx context.Context, filetypes []string) string {
+func GetRandomFilenameByTypes(ctx context.Context, filetypes []string) (string, error) {
 	conn, err := dbPool.Take(ctx)
+	defer dbPool.Put(conn)
 	if err != nil {
-		panic(err)
+		return "not_found.png", err
 	}
 
 	if len(filetypes) == 0 {
 		filetypes = AllFiletypes()
 	}
-	defer dbPool.Put(conn)
 
 	questionMarks := lo.Map(filetypes, func(_ string, _ int) string { return "?" })
 	placeholders := strings.Join(questionMarks, ", ")
@@ -332,7 +330,7 @@ func GetRandomFilenameByTypes(ctx context.Context, filetypes []string) string {
 	})
 	if err != nil {
 		fmt.Printf("Error getting random filename by types: %v\n", err)
-		return "not_found.png"
+		return "not_found.png", err
 	}
-	return filename
+	return filename, nil
 }

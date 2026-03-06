@@ -9,7 +9,7 @@ type Config struct {
 func Load() Config {
 	cfg := Config{}
 	if err := env.Parse(&cfg); err != nil {
-		panic(err)
+		panic(err) // this one is OK
 	}
 	return cfg
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
@@ -47,10 +48,16 @@ func indexValues(ctx context.Context) map[string]any {
 	if err != nil {
 		memoryUsage = uint64(0)
 	}
+
+	fc, _ := filedb.FileCount(ctx)
 	return map[string]any{
-		"fileCount":   p.Sprintf("%d", filedb.FileCount(ctx)),
+		"fileCount":   p.Sprintf("%d", fc),
 		"memoryUsage": util.HumanizeMemory(memoryUsage),
 	}
+}
+
+func notFoundError(c *echo.Context) error {
+	return c.Redirect(303, "/files/not_found.png")
 }
 
 func RandomFileHandler(c *echo.Context) error {
@@ -70,15 +77,20 @@ func RandomFileHandler(c *echo.Context) error {
 	ctx := c.Request().Context()
 
 	if query != "" {
-		filename := filedb.GetRandomFilenameByQuery(ctx, query)
+		filename, err := filedb.GetRandomFilenameByQuery(ctx, query)
+		if err != nil {
+			fmt.Printf("Error getting random filename by query: %v\n", err)
+			return notFoundError(c)
+		}
 		return c.Redirect(303, "/files/"+filename)
 	}
 
-	fmt.Printf("filetypes: %v\n", filetypes)
-	// filename := filedb.GetRandomFilename()
-	filename := filedb.GetRandomFilenameByTypes(ctx, filetypes)
+	filename, err := filedb.GetRandomFilenameByTypes(ctx, filetypes)
+	if err != nil {
+		fmt.Printf("Error getting random filename by types: %v\n", err)
+		return notFoundError(c)
+	}
 
-	// return ServeFilenameHandler(filename)(c)
 	return c.Redirect(303, "/files/"+filename)
 }
 
@@ -114,8 +126,8 @@ func Start(ctx context.Context, cfg env.Config) {
 	// e.Use(NoContentRanges)
 	// e.Use(CacheHeader)
 	// e.Pre(middleware.NonWWWRedirect())
-	e.Use(middleware.RequestLogger())
 	e.Use(middleware.Recover())
+	e.Use(middleware.ContextTimeout(time.Second * 30))
 
 	e.Static("/", "static")
 
