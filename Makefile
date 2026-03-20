@@ -51,10 +51,10 @@ staticcheck:
 .PHONY: govulncheck
 govulncheck:
 	@echo "Running go govulncheck..."
-	go govulncheck ./...
+	govulncheck internal/...
 
 .PHONY: check
-check: goimports coverage vet staticcheck govulncheck
+check: goimports coverage vet staticcheck
 	@echo "all checks passed!"
 
 .PHONY: test

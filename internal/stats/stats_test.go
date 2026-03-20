@@ -13,13 +13,8 @@ func TestMemoryUsage(t *testing.T) {
 	}
 
 	// Memory should be non-negative
-	if mem < 0 {
-		t.Errorf("Expected non-negative memory usage, got %d", mem)
-	}
-
-	// Memory should be zero or positive
-	if mem < 0 {
-		t.Errorf("Expected memory usage >= 0, got %d", mem)
+	if mem > 1024*1024*1024*100 { // 100GB sanity check
+		t.Logf("Memory usage %d seems unusually high", mem)
 	}
 
 	// Test calling multiple times gives consistent results
@@ -29,9 +24,6 @@ func TestMemoryUsage(t *testing.T) {
 	}
 
 	// Memory should be in reasonable range
-	if mem < 0 || mem > 1024^4 { // 100GB sanity check
-		t.Logf("Memory usage %d seems unusual", mem)
-	}
 
 	if mem != mem2 {
 		t.Logf("Memory usage changed from %d to %d between calls", mem, mem2)

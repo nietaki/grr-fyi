@@ -42,7 +42,11 @@ import (
 
 var dbPool *sqlitex.Pool
 
-const dbPath = "./db/filedb.sqlite"
+var dbPath = "./db/filedb.sqlite"
+
+func SetDbPath(path string) {
+	dbPath = path
+}
 
 var migrations []string = []string{
 	`CREATE TABLE documents (
