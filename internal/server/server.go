@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"html/template"
 	"io"
 	"path"
@@ -13,6 +12,7 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 	"github.com/nietaki/epstein-file-review/internal/env"
 	"github.com/nietaki/epstein-file-review/internal/filedb"
+	"github.com/nietaki/epstein-file-review/internal/logging"
 	"github.com/nietaki/epstein-file-review/internal/signing"
 	"github.com/nietaki/epstein-file-review/internal/stats"
 	"github.com/nietaki/epstein-file-review/internal/util"
@@ -80,7 +80,7 @@ func RandomFileHandler(c *echo.Context) error {
 	if query != "" {
 		filename, err := filedb.GetRandomFilenameByQuery(ctx, query)
 		if err != nil {
-			fmt.Printf("Error getting random filename by query: %v\n", err)
+			logging.Error("error getting random filename by query", "error", err)
 			return notFoundError(c)
 		}
 		return c.Redirect(303, "/files/"+filename+"?"+signing.SigningQueryString(filename))
@@ -88,7 +88,7 @@ func RandomFileHandler(c *echo.Context) error {
 
 	filename, err := filedb.GetRandomFilenameByTypes(ctx, filetypes)
 	if err != nil {
-		fmt.Printf("Error getting random filename by types: %v\n", err)
+		logging.Error("error getting random filename by types", "error", err)
 		return notFoundError(c)
 	}
 
@@ -103,7 +103,7 @@ func ServeFilenameHandler(filename string) echo.HandlerFunc {
 
 		err := signing.VerifySignature(filename, ts, sig)
 		if err != nil {
-			fmt.Printf("Signature verification failed for file %s: %v\n", filename, err)
+			logging.Error("signature verification failed", "filename", filename, "error", err)
 			return c.String(403, "forbidden")
 		}
 

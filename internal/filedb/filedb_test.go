@@ -6,11 +6,17 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/nietaki/epstein-file-review/internal/logging"
 	"github.com/nietaki/epstein-file-review/internal/signing"
 	"zombiezen.com/go/sqlite"
 
 	lo "github.com/samber/lo"
 )
+
+func TestMain(m *testing.M) {
+	logging.Init(context.Background(), false)
+	os.Exit(m.Run())
+}
 
 func TestFileType(t *testing.T) {
 	tests := []struct {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/nietaki/epstein-file-review/internal/env"
 	"github.com/nietaki/epstein-file-review/internal/filedb"
+	"github.com/nietaki/epstein-file-review/internal/logging"
 	"github.com/nietaki/epstein-file-review/internal/server"
 )
 
@@ -24,7 +25,7 @@ func doIndexFiles(ctx context.Context, indexingResult chan error) {
 	fileCount := 0
 	for scanner.Scan() {
 		if ctx.Err() != nil {
-			println("Stopping file indexing")
+			logging.Info("stopping file indexing")
 			break
 		}
 		line := strings.TrimSpace(scanner.Text())
@@ -37,13 +38,12 @@ func doIndexFiles(ctx context.Context, indexingResult chan error) {
 			fileCount++
 
 			if fileCount%1000 == 0 {
-				println("Indexed ", fileCount, " files")
+				logging.Info("file indexing progress", "count", fileCount)
 			}
 		}
 	}
 
-	// print file count
-	println("File count: ", fileCount)
+	logging.Info("file indexing complete", "total_files", fileCount)
 
 	// err = fmt.Errorf("test error from file indexing")
 }
@@ -55,19 +55,21 @@ func indexFiles(ctx context.Context) chan error {
 }
 
 func main() {
-	// print current working directory
 	dir, err := os.Getwd()
 	if err != nil {
-		panic(err) // this one is ok
+		panic(err)
 	}
+
+	logging.Init(context.Background(), os.Getenv("LOG_LEVEL") == "debug")
+
+	logging.Info("starting application", "cwd", dir)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	println("Current working directory: ", dir)
-	// read the `all_files.txt` file and split into non-empty lines
 	err = filedb.Init(ctx)
 	if err != nil {
+		logging.Error("failed to initialize filedb", "error", err)
 		stop()
 	}
 
@@ -76,7 +78,7 @@ func main() {
 		err := <-indexingResultChan
 		close(indexingResultChan)
 		if err != nil {
-			println("Error indexing files: ", err.Error())
+			logging.Error("error indexing files", "error", err)
 			stop()
 		}
 	}()
@@ -85,9 +87,9 @@ func main() {
 	server.Start(ctx, cfg)
 
 	<-ctx.Done()
-	println("Shutting down server...")
+	logging.Info("shutting down server...")
 
 	<-indexingResultChan
 
-	println("file indexing shut down peacefully")
+	logging.Info("file indexing shut down peacefully")
 }
