@@ -20,3 +20,16 @@ func TestSettingCustomPort(t *testing.T) {
 		t.Errorf("Expected ServerPort to be '8080', got '%s'", cfg.ServerPort)
 	}
 }
+
+func TestInvalidPortFormat(t *testing.T) {
+	// When SERVER_PORT has invalid characters, env.Parse accepts it
+	// This is the actual behavior of caarlos0/env library
+	t.Setenv("SERVER_PORT", "invalid_port_with_spaces")
+
+	cfg := Load()
+
+	// Should use the value provided, not default
+	if cfg.ServerPort != "invalid_port_with_spaces" {
+		t.Errorf("Expected ServerPort to be 'invalid_port_with_spaces', got '%s'", cfg.ServerPort)
+	}
+}

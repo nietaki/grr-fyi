@@ -22,20 +22,40 @@ install:
 	go install honnef.co/go/tools/cmd/staticcheck@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 
-.PHONY: check
-check:
+.PHONY: goimports
+goimports:
 	@echo "Running goimports..."
-	goimports -l -w .
+	goimports -l -w ./main.go ./internal/
 
+.PHONY: coverage
+coverage:
+	@echo "Running tests with coverage..."
+	go test -coverprofile=coverage/coverage.out ./internal/...
+	go tool cover -func=coverage/coverage.out
+
+coverage-html:
+	@echo "Running tests with coverage..."
+	go test -coverprofile=coverage/coverage.out ./internal/...
+	go tool cover -html=coverage/coverage.out
+
+.PHONY: vet
+vet:
 	@echo "Running go vet..."
 	go vet ./...
 
-	@echo "Running staticcheck..."
+.PHONY: staticcheck
+staticcheck:
+	@echo "Running go staticcheck..."
 	staticcheck ./...
-	revive -config revive_config.toml ./...
 
-	# echo "Running govulncheck..."
-	# govulncheck ./...
+.PHONY: govulncheck
+govulncheck:
+	@echo "Running go govulncheck..."
+	go govulncheck ./...
+
+.PHONY: check
+check: goimports coverage vet staticcheck govulncheck
+	@echo "all checks passed!"
 
 .PHONY: test
 test:

@@ -19,7 +19,7 @@
 - [ ] sqlite shell
 - [x] remove panics
 - [x] handle (and learn) about context (cancellation)
-- [ ] JWT-like auth for the files
+- [x] JWT-like auth for the files
 
 ## sqlite db schema
 

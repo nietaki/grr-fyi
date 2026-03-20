@@ -87,7 +87,7 @@ func main() {
 	<-ctx.Done()
 	println("Shutting down server...")
 
-	_, _ = <-indexingResultChan
+	<-indexingResultChan
 
 	println("file indexing shut down peacefully")
 }
