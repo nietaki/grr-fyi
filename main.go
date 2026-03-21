@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"log/slog"
 	"os"
 	"os/signal"
 	"strings"
@@ -21,11 +22,12 @@ func doIndexFiles(ctx context.Context, indexingResult chan error) {
 	if err != nil {
 		return
 	}
+
 	scanner := bufio.NewScanner(file)
 	fileCount := 0
 	for scanner.Scan() {
 		if ctx.Err() != nil {
-			logging.Info("stopping file indexing")
+			slog.Info("stopping file indexing")
 			break
 		}
 		line := strings.TrimSpace(scanner.Text())
@@ -38,12 +40,12 @@ func doIndexFiles(ctx context.Context, indexingResult chan error) {
 			fileCount++
 
 			if fileCount%1000 == 0 {
-				logging.Info("file indexing progress", "count", fileCount)
+				slog.Info("file indexing progress", "count", fileCount)
 			}
 		}
 	}
 
-	logging.Info("file indexing complete", "total_files", fileCount)
+	slog.Info("file indexing complete", "total_files", fileCount)
 
 	// err = fmt.Errorf("test error from file indexing")
 }
@@ -62,14 +64,14 @@ func main() {
 
 	logging.Init(context.Background(), os.Getenv("LOG_LEVEL") == "debug")
 
-	logging.Info("starting application", "cwd", dir)
+	slog.Info("starting application", "cwd", dir)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
 	err = filedb.Init(ctx)
 	if err != nil {
-		logging.Error("failed to initialize filedb", "error", err)
+		slog.Error("failed to initialize filedb", "error", err)
 		stop()
 	}
 
@@ -78,7 +80,7 @@ func main() {
 		err := <-indexingResultChan
 		close(indexingResultChan)
 		if err != nil {
-			logging.Error("error indexing files", "error", err)
+			slog.Error("error indexing files", "error", err)
 			stop()
 		}
 	}()
@@ -87,9 +89,9 @@ func main() {
 	server.Start(ctx, cfg)
 
 	<-ctx.Done()
-	logging.Info("shutting down server...")
+	slog.Info("shutting down server...")
 
 	<-indexingResultChan
 
-	logging.Info("file indexing shut down peacefully")
+	slog.Info("file indexing shut down peacefully")
 }

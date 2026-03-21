@@ -69,43 +69,13 @@ func TestJSONHandlerOutput(t *testing.T) {
 	}
 }
 
-func TestLogMethodsProduceOutput(t *testing.T) {
-	var buf bytes.Buffer
-	h := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})
-	logger := slog.New(h)
-	SetLogger(logger)
-
-	Debug("debug message", "key", "value")
-	Info("info message", "key", "value")
-	Warn("warn message", "key", "value")
-	Error("error message", "key", "value")
-
-	output := buf.String()
-
-	if !strings.Contains(output, "debug message") {
-		t.Error("Expected debug message in output")
-	}
-	if !strings.Contains(output, "info message") {
-		t.Error("Expected info message in output")
-	}
-	if !strings.Contains(output, "warn message") {
-		t.Error("Expected warn message in output")
-	}
-	if !strings.Contains(output, "error message") {
-		t.Error("Expected error message in output")
-	}
-	if !strings.Contains(output, "key=value") {
-		t.Error("Expected key=value in output")
-	}
-}
-
 func TestLogLevelsAreCorrect(t *testing.T) {
 	var buf bytes.Buffer
 	h := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})
 	logger := slog.New(h)
 	SetLogger(logger)
 
-	Debug("test", "level", "debug")
+	slog.Debug("test", "level", "debug")
 	output := buf.String()
 
 	if !strings.Contains(output, "level=DEBUG") {
@@ -113,7 +83,7 @@ func TestLogLevelsAreCorrect(t *testing.T) {
 	}
 
 	buf.Reset()
-	Info("test", "level", "info")
+	slog.Info("test", "level", "info")
 	output = buf.String()
 
 	if !strings.Contains(output, "level=INFO") {
@@ -121,7 +91,7 @@ func TestLogLevelsAreCorrect(t *testing.T) {
 	}
 
 	buf.Reset()
-	Warn("test", "level", "warn")
+	slog.Warn("test", "level", "warn")
 	output = buf.String()
 
 	if !strings.Contains(output, "level=WARN") {
@@ -129,7 +99,7 @@ func TestLogLevelsAreCorrect(t *testing.T) {
 	}
 
 	buf.Reset()
-	Error("test", "level", "error")
+	slog.Error("test", "level", "error")
 	output = buf.String()
 
 	if !strings.Contains(output, "level=ERROR") {
@@ -141,7 +111,7 @@ func TestWithLogger(t *testing.T) {
 	ctx := context.Background()
 	Init(ctx, false)
 
-	logger := With("service", "test")
+	logger := slog.With("service", "test")
 	if logger == nil {
 		t.Error("Expected With to return non-nil logger")
 	}

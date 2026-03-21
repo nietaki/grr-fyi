@@ -60,7 +60,7 @@ check: goimports coverage vet staticcheck
 .PHONY: test
 test:
 	@echo "Running tests..."
-	go test -v ./...
+	go test ./...
 
 .PHONY: build
 build:

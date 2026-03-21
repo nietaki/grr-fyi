@@ -33,8 +33,8 @@ import (
 	"path"
 	"regexp"
 	"strings"
+  "log/slog"
 
-	"github.com/nietaki/epstein-file-review/internal/logging"
 	lo "github.com/samber/lo"
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitemigration"
@@ -135,7 +135,7 @@ func one[T any](stmt *sqlite.Stmt, extractor func(*sqlite.Stmt) T) (T, error) {
 	hasRow, err := stmt.Step()
 	defer stmt.Reset()
 	if err != nil {
-		logging.Error("error executing a one() query", "error", err)
+		slog.Error("error executing a one() query", "error", err)
 		return defaultValue, err
 	}
 	if !hasRow {
@@ -148,7 +148,7 @@ func one[T any](stmt *sqlite.Stmt, extractor func(*sqlite.Stmt) T) (T, error) {
 func zero(stmt *sqlite.Stmt) error {
 	hasRow, err := stmt.Step()
 	if err != nil {
-		logging.Error("error executing a zero() query", "error", err)
+		slog.Error("error executing a zero() query", "error", err)
 		return err
 	}
 	if hasRow {
@@ -180,7 +180,7 @@ func AddDocument(ctx context.Context, originalPath string) error {
 	stmt.SetText("$filetype", filetype)
 	fileInfo, err := os.Stat(originalPath)
 	if err != nil {
-		logging.Error("error getting file info", "path", originalPath, "error", err)
+		slog.Error("error getting file info", "path", originalPath, "error", err)
 		return err
 	}
 	stmt.SetInt64("$filesize", fileInfo.Size())
@@ -201,7 +201,7 @@ func AddDocument(ctx context.Context, originalPath string) error {
 	err = zero(stmt)
 
 	if err != nil {
-		logging.Error("error inserting document", "error", err)
+		slog.Error("error inserting document", "error", err)
 		return err
 	}
 
@@ -241,7 +241,7 @@ func FileCount(ctx context.Context) (int, error) {
 		return int(s.GetInt64("ct"))
 	})
 	if err != nil {
-		logging.Error("error counting documents", "error", err)
+		slog.Error("error counting documents", "error", err)
 		return -1, err
 	}
 	return ct, nil
@@ -281,10 +281,10 @@ func GetRandomFilenameByQuery(ctx context.Context, query string) (string, error)
 	}
 
 	stmt := conn.Prep(`
-    SELECT path 
-    FROM documents 
-    INNER JOIN documents_fts ON documents.id = documents_fts.rowid 
-    WHERE documents_fts MATCH ? 
+    SELECT path
+    FROM documents
+    INNER JOIN documents_fts ON documents.id = documents_fts.rowid
+    WHERE documents_fts MATCH ?
     ORDER BY abs(salt - ?) ASC LIMIT 1;`)
 	stmt.BindText(1, query)
 	stmt.BindFloat(2, getRandomSalt())
@@ -293,7 +293,7 @@ func GetRandomFilenameByQuery(ctx context.Context, query string) (string, error)
 		return s.GetText("path")
 	})
 	if err != nil {
-		logging.Error("error getting random filename by contents", "error", err)
+		slog.Error("error getting random filename by contents", "error", err)
 		return "not_found.png", nil
 	}
 
@@ -333,7 +333,7 @@ func GetRandomFilenameByTypes(ctx context.Context, filetypes []string) (string, 
 		return s.GetText("path")
 	})
 	if err != nil {
-		logging.Error("error getting random filename by types", "error", err)
+		slog.Error("error getting random filename by types", "error", err)
 		return "not_found.png", err
 	}
 	return filename, nil
