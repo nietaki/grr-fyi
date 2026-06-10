@@ -27,13 +27,13 @@ package filedb
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"math/rand"
 	"os"
 	"path"
 	"regexp"
 	"strings"
-  "log/slog"
 
 	lo "github.com/samber/lo"
 	"zombiezen.com/go/sqlite"

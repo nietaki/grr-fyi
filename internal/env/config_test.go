@@ -4,10 +4,14 @@ import "testing"
 
 func TestDefaultValues(t *testing.T) {
 	cfg := Load()
-
 	if cfg.ServerPort != "30666" {
 		t.Errorf("Expected default ServerPort to be '30666', got '%s'", cfg.ServerPort)
 	}
+}
+
+func TestRandomFailure(t *testing.T) {
+	t.Skip("skipping deliberately failing test")
+	t.Fatal("This test is designed to fail randomly to demonstrate test failure handling.")
 }
 
 func TestSettingCustomPort(t *testing.T) {

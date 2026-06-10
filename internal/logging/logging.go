@@ -5,16 +5,15 @@ import (
 	"io"
 	"log/slog"
 	"os"
+
+	"github.com/nietaki/epstein-file-review/internal/env"
 )
 
 var (
 	defaultLogger *slog.Logger
 )
 
-func Init(ctx context.Context, verbose bool) {
-	var handler slog.Handler
-	var writer io.Writer = os.Stdout
-
+func getHandlerOptions(verbose bool) *slog.HandlerOptions {
 	opts := &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}
@@ -23,7 +22,16 @@ func Init(ctx context.Context, verbose bool) {
 		opts.Level = slog.LevelDebug
 	}
 
-	if os.Getenv("LOG_FORMAT") == "json" {
+	return opts
+}
+
+func Init(ctx context.Context, verbose bool) {
+	var handler slog.Handler
+	var writer io.Writer = os.Stdout
+
+	opts := getHandlerOptions(verbose)
+
+	if env.Get().LogFormat == "json" {
 		handler = slog.NewJSONHandler(writer, opts)
 	} else {
 		handler = slog.NewTextHandler(writer, opts)
