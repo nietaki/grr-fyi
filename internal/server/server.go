@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 	"github.com/nietaki/grr-fyi/internal/env"
+	"github.com/nietaki/grr-fyi/internal/site"
 	"github.com/nietaki/grr-fyi/internal/stats"
 	"github.com/nietaki/grr-fyi/internal/util"
 	"golang.org/x/text/language"
@@ -18,6 +19,21 @@ import (
 // TODO: funcMap
 type Template struct {
 	templates *template.Template
+}
+
+func NewTemplate() *Template {
+	siteConf := site.Read()
+
+	funcs := template.FuncMap{
+		"site": func(s string) string { return siteConf.Get(s) },
+	}
+	tpl, err := template.New("").Funcs(funcs).ParseGlob("templates/*.html")
+	if err != nil {
+		panic(err)
+	}
+	return &Template{
+		templates: tpl,
+	}
 }
 
 func (t *Template) Render(c *echo.Context, w io.Writer, name string, data any) error {
@@ -45,11 +61,8 @@ func Start(ctx context.Context, cfg env.Config) {
 	// 	Filesystem: os.DirFS("/"),
 	// }
 	// e := echo.NewWithConfig(config)
-	t := &Template{
-		templates: template.Must(template.ParseGlob("templates/*.html")),
-	}
 	e := echo.New()
-	e.Renderer = t
+	e.Renderer = NewTemplate()
 
 	// e.Use(NoContentRanges)
 	// e.Use(CacheHeader)
