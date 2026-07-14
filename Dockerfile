@@ -2,10 +2,10 @@
 FROM golang:1.25-trixie AS base
 
 RUN mkdir -p /usr/local/app/build
-# RUN apt-get update && apt-get install -y --no-install-recommends bash 
+# RUN apt-get update && apt-get install -y --no-install-recommends bash
 WORKDIR /usr/local/app
 
-RUN apt-get update && apt-get install -y --no-install-recommends bash poppler-utils ffmpeg
+RUN apt-get update && apt-get install -y --no-install-recommends bash
 
 RUN chmod ugo+rwx /usr/local/app
 
@@ -16,22 +16,20 @@ COPY go.sum ./
 RUN go mod download
 
 COPY . ./
-RUN go build -o build/epstein-file-review
+RUN go build -o build/grr-fyi
 
 
 FROM base AS final
 
-COPY --from=builder /usr/local/app/build/epstein-file-review /usr/local/app/epstein-file-review
+COPY --from=builder /usr/local/app/build/grr-fyi /usr/local/app/grr-fyi
 COPY not_found.png ./
 COPY *.sh ./
-COPY public ./public
+COPY templates ./templates
+COPY views ./views
 COPY static ./static
 
 
-VOLUME /raw_data
-VOLUME /processed_data
 VOLUME /app_tmp
 
 ENV SERVER_PORT=80
-# ENTRYPOINT ["/usr/local/app/epstein-file-review"]
-ENTRYPOINT ["/usr/local/app/process_and_start.sh"]
+ENTRYPOINT ["/usr/local/app/grr-fyi"]

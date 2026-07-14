@@ -73,25 +73,25 @@ run: build
 
 .PHONY: clean
 clean:
-	rm ./epstein-file-review || true
-	rm -f $(BUILD_DIR)/epstein-file-review* || true
+	rm ./grr-fyi || true
+	rm -f $(BUILD_DIR)/grr-fyi* || true
 
 .PHONY: build-all
 build-all:
-	GOOS=linux GOARCH=amd64 go build -o "$(BUILD_DIR)/epstein-file-review_linux_amd64"
-	GOOS=linux GOARCH=arm64 go build -o "$(BUILD_DIR)/epstein-file-review_linux_arm64"
-	GOOS=darwin GOARCH=amd64 go build -o "$(BUILD_DIR)/epstein-file-review_darwin_amd64"
-	GOOS=darwin GOARCH=arm64 go build -o "$(BUILD_DIR)/epstein-file-review_darwin_arm64"
+	GOOS=linux GOARCH=amd64 go build -o "$(BUILD_DIR)/grr-fyi_linux_amd64"
+	GOOS=linux GOARCH=arm64 go build -o "$(BUILD_DIR)/grr-fyi_linux_arm64"
+	GOOS=darwin GOARCH=amd64 go build -o "$(BUILD_DIR)/grr-fyi_darwin_amd64"
+	GOOS=darwin GOARCH=arm64 go build -o "$(BUILD_DIR)/grr-fyi_darwin_arm64"
 
 .PHONY: build-docker
 build-docker:
 	echo "DEPRECATED: use 'make push-docker' instead"
 	exit 1
-	docker buildx build --platform linux/arm64,linux/amd64 --tag registry.hoplon.net/nietaki/epstein-file-review:latest .
+	docker buildx build --platform linux/arm64,linux/amd64 --tag registry.hoplon.net/nietaki/grr-fyi:latest .
 
 .PHONY: push-docker
 push-docker:
-	docker buildx build --platform linux/arm64,linux/amd64 --tag registry.hoplon.net/nietaki/epstein-file-review:latest --tag registry.hoplon.net/nietaki/epstein-file-review:$(APP_VERSION) --push .
+	docker buildx build --platform linux/arm64,linux/amd64 --tag registry.hoplon.net/nietaki/grr-fyi:latest --tag registry.hoplon.net/nietaki/grr-fyi:$(APP_VERSION) --push .
 
 build/efr-chart-$(CHART_VERSION).tgz: push-docker
 # build/efr-chart-$(CHART_VERSION).tgz:

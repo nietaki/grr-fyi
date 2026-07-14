@@ -1,4 +1,4 @@
-module github.com/nietaki/epstein-file-review
+module github.com/nietaki/grr-fyi
 
 go 1.25.6
 

@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/nietaki/epstein-file-review/internal/env"
+	"github.com/nietaki/grr-fyi/internal/env"
 )
 
 var (
