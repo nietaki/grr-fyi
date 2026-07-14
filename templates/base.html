@@ -7,6 +7,7 @@
 {{ template "head.html" . }}
 
 <body>
+	{{block "content" .}}default content{{end}}
   <div class="box">
 			<form action="/randomfile" method="post" target="file_frame" onsubmit="plausible('another one')">
 			<div class="row header grid">
@@ -20,7 +21,7 @@
 				<fieldset>
 					<legend>file types</legend>
 					<input type="checkbox" name="filetypes[]" value="pdf" id="pdf" checked />
-					<label for="pdf">PDF</label>
+	<label for="pdf">PDF</label>
 					<input type="checkbox" name="filetypes[]" value="audio" id="audio" checked />
 					<label for="audio">audio</label>
 					<input type="checkbox" name="filetypes[]" value="video" id="video" checked />

@@ -15,12 +15,16 @@ import (
 	"golang.org/x/text/message"
 )
 
+// TODO: funcMap
 type Template struct {
 	templates *template.Template
 }
 
 func (t *Template) Render(c *echo.Context, w io.Writer, name string, data any) error {
-	return t.templates.ExecuteTemplate(w, name, data)
+	tmpl := template.Must(t.templates.Clone())
+	tmpl = template.Must(tmpl.ParseFiles("views/" + name))
+	return tmpl.ExecuteTemplate(w, "base.html", data)
+	// return t.templates.ExecuteTemplate(w, name, data)
 }
 
 func indexValues(ctx context.Context) map[string]any {
@@ -57,7 +61,7 @@ func Start(ctx context.Context, cfg env.Config) {
 
 	e.GET("/", func(c *echo.Context) error {
 		// hello world
-		return c.Render(200, "base.html", indexValues(c.Request().Context()))
+		return c.Render(200, "index.html", indexValues(c.Request().Context()))
 	})
 
 	// concatenate the dot and the port
