@@ -75,3 +75,20 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+# Additional environment variables for the container. Entries are standard
+# Kubernetes env objects, so each supports a plain value or valueFrom
+# (e.g. secretKeyRef) for pulling a key from an existing Secret.
+env: []
+# - name: LOG_FORMAT
+#   value: json
+# - name: LITESTREAM_REPLICA_URL
+#   valueFrom:
+#     secretKeyRef:
+#       name: grr-fyi-secrets
+#       key: replica-url
+
+# Bulk-load environment variables from existing Secrets/ConfigMaps.
+envFrom: []
+# - secretRef:
+#     name: grr-fyi-secrets
