@@ -82,17 +82,24 @@ build-all:
 	GOOS=darwin GOARCH=amd64 go build -o "$(BUILD_DIR)/grr-fyi_darwin_amd64"
 	GOOS=darwin GOARCH=arm64 go build -o "$(BUILD_DIR)/grr-fyi_darwin_arm64"
 
-.PHONY: build-docker
-build-docker:
-	echo "DEPRECATED: use 'make push-docker' instead"
+.PHONY: docker-build
+docker-build:
+	echo "DEPRECATED: use 'make docker-push' instead"
 	exit 1
 	docker buildx build --platform linux/arm64,linux/amd64 --tag registry.hoplon.net/nietaki/grr-fyi:latest .
 
-.PHONY: push-docker
-push-docker:
+export BUILDX_BUILDER ?= multiarch
+
+.PHONY: docker-builder
+docker-builder:
+	docker buildx inspect $(BUILDX_BUILDER) >/dev/null 2>&1 || docker buildx create --name $(BUILDX_BUILDER) --driver docker-container --bootstrap
+	docker buildx use $(BUILDX_BUILDER)
+
+.PHONY: docker-push
+docker-push: docker-builder
 	docker buildx build --platform linux/arm64,linux/amd64 --tag registry.hoplon.net/nietaki/grr-fyi:latest --tag registry.hoplon.net/nietaki/grr-fyi:$(APP_VERSION) --push .
 
-build/grr-fyi-chart-$(CHART_VERSION).tgz: push-docker
+build/grr-fyi-chart-$(CHART_VERSION).tgz: docker-push
 # build/grr-fyi-chart-$(CHART_VERSION).tgz:
 	echo "packaging the chart, version $(CHART_VERSION)"
 	helm package grr-fyi-chart --app-version $(APP_VERSION) --version $(CHART_VERSION) --destination $(BUILD_DIR)
