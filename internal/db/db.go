@@ -3,12 +3,17 @@ package db
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"fmt"
 
+	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
 
 	"github.com/nietaki/grr-fyi/internal/env"
 )
+
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
 
 // Open opens the application's SQLite connection to cfg.DBPath. The database
 // is managed by litestream (see internal/replication); the WAL pragma ensures
@@ -23,21 +28,18 @@ func Open(ctx context.Context, cfg env.Config) (*sql.DB, error) {
 		conn.Close()
 		return nil, fmt.Errorf("ping sqlite: %w", err)
 	}
+	conn.SetMaxOpenConns(1)
 	return conn, nil
 }
 
-// Migrate applies the schema. It is idempotent and safe to run on every start.
+// Migrate applies all pending migrations. It is idempotent and safe to run on every start.
 func Migrate(ctx context.Context, conn *sql.DB) error {
-	if _, err := conn.ExecContext(ctx, `
-		CREATE TABLE IF NOT EXISTS meta (
-			key   TEXT PRIMARY KEY,
-			value TEXT NOT NULL
-		)`); err != nil {
-		return fmt.Errorf("create meta table: %w", err)
+	goose.SetBaseFS(migrationsFS)
+	if err := goose.SetDialect("sqlite3"); err != nil {
+		return fmt.Errorf("set goose dialect: %w", err)
 	}
-	if _, err := conn.ExecContext(ctx,
-		`INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', '1')`); err != nil {
-		return fmt.Errorf("seed meta: %w", err)
+	if err := goose.Up(conn, "migrations"); err != nil {
+		return fmt.Errorf("goose up: %w", err)
 	}
 	return nil
 }

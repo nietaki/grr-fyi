@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"time"
 
 	"github.com/benbjohnson/litestream"
@@ -61,7 +62,7 @@ func newReplicaClient(cfg env.Config) (litestream.ReplicaClient, error) {
 	if cfg.ReplicaUrl != "" {
 		return litestream.NewReplicaClientFromURL(cfg.ReplicaUrl)
 	}
-	return file.NewReplicaClient("file_replica"), nil
+	return file.NewReplicaClient(filepath.Join(filepath.Dir(cfg.DBPath), "litestream")), nil
 }
 
 // setClientReplica wires the file client's back-reference to the replica so it
