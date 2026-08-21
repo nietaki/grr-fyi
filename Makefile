@@ -93,12 +93,12 @@ build-docker:
 push-docker:
 	docker buildx build --platform linux/arm64,linux/amd64 --tag registry.hoplon.net/nietaki/grr-fyi:latest --tag registry.hoplon.net/nietaki/grr-fyi:$(APP_VERSION) --push .
 
-build/efr-chart-$(CHART_VERSION).tgz: push-docker
-# build/efr-chart-$(CHART_VERSION).tgz:
+build/grr-fyi-chart-$(CHART_VERSION).tgz: push-docker
+# build/grr-fyi-chart-$(CHART_VERSION).tgz:
 	echo "packaging the chart, version $(CHART_VERSION)"
-	helm package efr-chart --app-version $(APP_VERSION) --version $(CHART_VERSION) --destination $(BUILD_DIR)
+	helm package grr-fyi-chart --app-version $(APP_VERSION) --version $(CHART_VERSION) --destination $(BUILD_DIR)
 
 .PHONY: helm-push
-helm-push: build/efr-chart-$(CHART_VERSION).tgz
-	helm push build/efr-chart-$(CHART_VERSION).tgz oci://registry.hoplon.net/helm-charts
+helm-push: build/grr-fyi-chart-$(CHART_VERSION).tgz
+	helm push build/grr-fyi-chart-$(CHART_VERSION).tgz oci://registry.hoplon.net/helm-charts
 
