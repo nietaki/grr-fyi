@@ -17,6 +17,6 @@ spec:
       name: http
   selector:
     {{- include "grr-fyi-chart.selectorLabels" . | nindent 4 }}
-  {{- with .Values.service.loadBalancerClass }}
-  loadBalancerClass: {{ . }}
+  {{- if and .Values.service.loadBalancerClass (eq .Values.service.type "LoadBalancer") }}
+  loadBalancerClass: {{ .Values.service.loadBalancerClass }}
   {{- end }}
