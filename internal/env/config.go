@@ -3,10 +3,10 @@ package env
 import "github.com/caarlos0/env/v11"
 
 type Config struct {
-	ServerPort        string `env:"SERVER_PORT" envDefault:"30666"`
-	LogFormat         string `env:"LOG_FORMAT" envDefault:"text"`
-	DBPath            string `env:"DB_PATH" envDefault:"db/filedb.sqlite"`
-	LitestreamReplica string `env:"LITESTREAM_REPLICA" envDefault:""`
+	ServerPort string `env:"SERVER_PORT" envDefault:"30666"`
+	LogFormat  string `env:"LOG_FORMAT" envDefault:"text"`
+	DBPath     string `env:"DB_PATH" envDefault:"db/filedb.sqlite"`
+	ReplicaUrl string `env:"LITESTREAM_REPLICA_URL" envDefault:""`
 }
 
 var cfg Config

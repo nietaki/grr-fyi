@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"path/filepath"
 	"time"
 
 	"github.com/benbjohnson/litestream"
@@ -59,11 +58,10 @@ func Start(ctx context.Context, cfg env.Config) (*litestream.Store, error) {
 }
 
 func newReplicaClient(cfg env.Config) (litestream.ReplicaClient, error) {
-	if cfg.LitestreamReplica != "" {
-		return litestream.NewReplicaClientFromURL(cfg.LitestreamReplica)
+	if cfg.ReplicaUrl != "" {
+		return litestream.NewReplicaClientFromURL(cfg.ReplicaUrl)
 	}
-	dir := filepath.Join(filepath.Dir(cfg.DBPath), "litestream")
-	return file.NewReplicaClient(dir), nil
+	return file.NewReplicaClient("file_replica"), nil
 }
 
 // setClientReplica wires the file client's back-reference to the replica so it
