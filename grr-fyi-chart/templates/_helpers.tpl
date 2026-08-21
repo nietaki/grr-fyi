@@ -24,7 +24,7 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 
 {{/*
-Create chart name and version as used by the chart label.
+Create chart name and version as used for the chart label.
 */}}
 {{- define "grr-fyi-chart.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
@@ -48,15 +48,4 @@ Selector labels
 {{- define "grr-fyi-chart.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "grr-fyi-chart.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "grr-fyi-chart.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "grr-fyi-chart.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
 {{- end }}
