@@ -1,8 +1,10 @@
 package site
 
-import "github.com/knadh/koanf/v2"
-import "github.com/knadh/koanf/providers/file"
-import "github.com/knadh/koanf/parsers/yaml"
+import (
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/v2"
+)
 
 // read yml
 //

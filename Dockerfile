@@ -30,6 +30,8 @@ COPY static ./static
 
 
 VOLUME /app_tmp
+VOLUME /data
 
 ENV SERVER_PORT=80
+ENV DB_PATH=/data/filedb.sqlite
 ENTRYPOINT ["/usr/local/app/grr-fyi"]
