@@ -1,35 +1,36 @@
-{{define "de"}}T1 invokes T2: ({{template "T2"}}){{end}}
 <head>
 	<!-- HTML Meta Tags -->
-	<title>Epstein Roulette - examine a random file from {{.fileCount}} available!</title>
-	<meta name="description" content="Files categorised into video, audio and PDFiles for your peeping pleasure. PDFiles' content search now available!">
+	<title>{{ site "title" }}</title>
+	<meta name="description" content="{{ site "description" }}">
 
 	<!-- Facebook Meta Tags -->
 	<meta property="og:url" content="https://grr.fyi/">
 	<meta property="og:type" content="website">
 	<meta property="og:title" content="{{ site "title" }}">
-	<meta property="og:description" content="Files categorised into video, audio and PDFiles for your peeping pleasure. PDFiles' content search now available!">
-	<meta property="og:image" content="/img/og.jpg">
+	<meta property="og:description" content="{{ site "description" }}">
+	<meta property="og:image" content="/img/og_favicon.png">
 
 	<!-- Twitter Meta Tags -->
 	<meta name="twitter:card" content="summary_large_image">
-	<meta property="twitter:domain" content="grr.fyi">
-	<meta property="twitter:url" content="https://grr.fyi/">
-	<meta name="twitter:title" content="Epstein Roulette - examine a random file from {{.fileCount}} available!">
-	<meta name="twitter:description" content="Files categorised into video, audio and PDFiles for your peeping pleasure. PDFiles' content search now available!">
-	<meta name="twitter:image" content="/img/og.jpg">
+	<meta property="twitter:domain" content="{{ site "domain" }}">
+	<meta property="twitter:url" content="{{ site "url" }}">
+	<meta name="twitter:title" content="{{ site "title" }}">
+	<meta name="twitter:description" content="{{ site "description" }}">
+	<meta name="twitter:image" content="/img/og_favicon.png">
 
 	<!-- Meta Tags Generated via https://www.opengraph.xyz -->
 	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
 	<link rel="manifest" href="/site.webmanifest">
 
 	<script defer data-domain="grr.fyi" src="/js/script.file-downloads.outbound-links.pageview-props.tagged-events.js"></script>
 	<script>window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }</script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 	<script src="/js/main.js"></script>
-  <link rel="stylesheet" href="/css/pico/pico.grey.min.css">
+
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="color-scheme" content="light dark">
+  <link rel="stylesheet" href="/css/pico/pico.fuchsia.min.css">
   <link rel="stylesheet" href="/css/main.css">
 	<meta name="google-site-verification" content="O7n4iH1i7fvh_fTnJs1lZO4euqEzqLWBm_-55gz0FJ0" />
 </head>

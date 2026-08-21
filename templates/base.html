@@ -7,47 +7,16 @@
 {{ template "head.html" . }}
 
 <body>
+	<header class="container">
+	{{ template "topnav.html" . }}
+	</header>
+  <main class="container">
+	<!-- CONTENT -->
 	{{block "content" .}}default content{{end}}
-  <div class="box">
-			<form action="/randomfile" method="post" target="file_frame" onsubmit="plausible('another one')">
-			<div class="row header grid">
-				<label>
-						<legend>(pdfs) containing text</legend>
-						<div role="search">
-							<input type="search" placeholder="use quotes to search for a phrase" name="query" id="query" />
-							<input type="reset" value="clear" />
-						</div>
-				</label>
-				<fieldset>
-					<legend>file types</legend>
-					<input type="checkbox" name="filetypes[]" value="pdf" id="pdf" checked />
-	<label for="pdf">PDF</label>
-					<input type="checkbox" name="filetypes[]" value="audio" id="audio" checked />
-					<label for="audio">audio</label>
-					<input type="checkbox" name="filetypes[]" value="video" id="video" checked />
-					<label for="video">video</label>
-					<input type="checkbox" name="filetypes[]" value="other" id="other" />
-					<label for="other">other</label>
-				</fieldset>
-				<button type="submit" class="contrast">Another one!</button>
-			</div>
-		</form>
-		<div class="row content">
-			<iframe name="file_frame" src="/randomfile" width="100%" height="100%">
-			</iframe>
-		</div>
-		<div class="row footer grid">
-			<div class="left">
-					<small>
-						{{.fileCount}} files indexed, server+db uses {{.memoryUsage}} of RAM
-					</small>
-			</div>
-			<div class="right">
-				<small>
-					<a href="https://grr.fyi/">grr.fyi</a>, a self-hosted url shortener by <a href="https://nietaki.com/">nietaki</a>
-				</small>
-			</div>
-		</div>
-  </div>
+	<!-- /CONTENT -->
+	</main>
+	<footer class="container">
+	{{ template "footer.html" . }}
+	</footer>
 </body>
 </html>

@@ -1,1 +1,4 @@
-title: grr.fyi title
+title: grr.fyi url shortener
+description: sqlite/golang url shortener
+domain: grr.fyi
+url: https://grr.fyi/

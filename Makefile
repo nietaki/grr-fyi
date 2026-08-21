@@ -68,9 +68,6 @@ build:
 
 .PHONY: run
 run: build
-	# Clear the local database (file, WAL/SHM sidecars and the litestream
-	# replica) but keep the tracked db/.gitignore (bash globs skip dotfiles).
-	rm -rf ./db/*
 	go run main.go
 
 .PHONY: clean
