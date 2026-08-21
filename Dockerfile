@@ -22,14 +22,11 @@ RUN go build -o build/grr-fyi
 FROM base AS final
 
 COPY --from=builder /usr/local/app/build/grr-fyi /usr/local/app/grr-fyi
-COPY not_found.png ./
-COPY *.sh ./
 COPY templates ./templates
 COPY views ./views
 COPY static ./static
 
 
-VOLUME /app_tmp
 VOLUME /data
 
 ENV SERVER_PORT=80
