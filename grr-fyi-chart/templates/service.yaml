@@ -2,6 +2,10 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "grr-fyi-chart.fullname" . }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   labels:
     {{- include "grr-fyi-chart.labels" . | nindent 4 }}
 spec:
@@ -13,3 +17,6 @@ spec:
       name: http
   selector:
     {{- include "grr-fyi-chart.selectorLabels" . | nindent 4 }}
+  {{- with .Values.service.loadBalancerClass }}
+  loadBalancerClass: {{ . }}
+  {{- end }}

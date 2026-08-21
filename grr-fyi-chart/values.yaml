@@ -34,6 +34,10 @@ service:
   type: ClusterIP
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
   port: 80
+  # This sets annotations on the Service object, e.g. metallb.io/loadBalancerIPs: 192.168.1.180
+  annotations: {}
+  # This sets the load balancer class, e.g. metallb-class (only meaningful for LoadBalancer services)
+  loadBalancerClass: ""
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
