@@ -21,6 +21,9 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+# Port the container listens on (SERVER_PORT env var)
+containerPort: 30666
+
 # This is for setting Kubernetes Annotations to a Pod.
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
 podAnnotations: {}

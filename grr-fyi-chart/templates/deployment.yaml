@@ -31,7 +31,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: SERVER_PORT
-              value: {{ .Values.service.port | quote }}
+              value: {{ .Values.containerPort | quote }}
             {{- with .Values.env }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -41,7 +41,7 @@ spec:
           {{- end }}
           ports:
             - name: http
-              containerPort: {{ .Values.service.port }}
+              containerPort: {{ .Values.containerPort }}
               protocol: TCP
           {{- with .Values.livenessProbe }}
           livenessProbe:

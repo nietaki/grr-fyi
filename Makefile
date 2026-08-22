@@ -99,7 +99,7 @@ docker-builder:
 docker-push: docker-builder
 	docker buildx build --platform linux/arm64,linux/amd64 --tag registry.hoplon.net/nietaki/grr-fyi:latest --tag registry.hoplon.net/nietaki/grr-fyi:$(APP_VERSION) --push .
 
-build/grr-fyi-chart-$(CHART_VERSION).tgz: docker-push
+build/grr-fyi-chart-$(CHART_VERSION).tgz:
 # build/grr-fyi-chart-$(CHART_VERSION).tgz:
 	echo "packaging the chart, version $(CHART_VERSION)"
 	helm package grr-fyi-chart --app-version $(APP_VERSION) --version $(CHART_VERSION) --destination $(BUILD_DIR)
