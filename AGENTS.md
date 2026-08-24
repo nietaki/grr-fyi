@@ -4,7 +4,7 @@
 
 ```bash
 make check        # goimports + coverage + vet + staticcheck (run before committing)
-make test         # go test ./...
+make test         # gotest ./...
 make coverage     # tests with coverage report
 make run          # build and run (server on :30666)
 make build        # go build
@@ -25,6 +25,12 @@ make build        # go build
 - **Migrations**: Use goose. Add `.sql` files to `internal/db/migrations/` with `-- +goose Up` / `-- +goose Down` markers. They're embedded via `//go:embed`.
 - **Shutdown order**: LIFO defers — app `conn.Close()` runs before `store.Close()` (Litestream final sync).
 - **Bash scripts**: When running ephemeral debugging commands or one-off scripts during a session, use relative paths. Absolute paths may be blocked by opencode's sandbox, which restricts writes outside the workspace.
+
+## Testing
+
+- **Framework**: Use `github.com/mvrahden/go-test/pkg/gotest` for all tests. Write tests for any new functionality that's not very difficult to test.
+- **Suite pattern**: Use `type XxxTestSuite struct{}` with `BeforeEach(t *gotest.T)` for setup and `TestXxx(t *gotest.T)` methods with `t.It("description", func(it *gotest.T) { ... })` subtests.
+- **Assertions**: Use `gotest.Equal`, `gotest.NoError`, `gotest.True`, etc. instead of manual `if err != nil { t.Fatalf(...) }` patterns.
 
 ## Environment
 
