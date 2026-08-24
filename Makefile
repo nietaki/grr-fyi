@@ -116,5 +116,6 @@ bump-versions:
 push-all: docker-push helm-push
 
 .PHONY: push-new
-push-new: bump-versions push-all
+push-new: bump-versions
+	$(MAKE) push-all
 
