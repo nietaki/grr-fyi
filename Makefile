@@ -108,3 +108,13 @@ build/grr-fyi-chart-$(CHART_VERSION).tgz:
 helm-push: build/grr-fyi-chart-$(CHART_VERSION).tgz
 	helm push build/grr-fyi-chart-$(CHART_VERSION).tgz oci://registry.hoplon.net/helm-charts
 
+.PHONY: bump-versions
+bump-versions:
+	@bash scripts/bump-versions.sh
+
+.PHONY: push-all
+push-all: docker-push helm-push
+
+.PHONY: push-new
+push-new: bump-versions push-all
+

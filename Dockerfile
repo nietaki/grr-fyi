@@ -25,6 +25,7 @@ COPY --from=builder /usr/local/app/build/grr-fyi /usr/local/app/grr-fyi
 COPY templates ./templates
 COPY views ./views
 COPY static ./static
+COPY priv ./priv
 
 
 VOLUME /data
