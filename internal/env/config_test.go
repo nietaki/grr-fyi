@@ -32,3 +32,12 @@ func (s *ConfigTestSuite) TestInvalidPortFormat(t *gotest.T) {
 		gotest.Equal(it, "invalid_port_with_spaces", cfg.ServerPort)
 	})
 }
+
+func (s *ConfigTestSuite) TestGet(t *gotest.T) {
+	t.It("returns the loaded config", func(it *gotest.T) {
+		it.Setenv("SERVER_PORT", "9999")
+		Load()
+		cfg := Get()
+		gotest.Equal(it, "9999", cfg.ServerPort)
+	})
+}

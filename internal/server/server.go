@@ -17,8 +17,8 @@ type Template struct {
 	templates *template.Template
 }
 
-func NewTemplate() *Template {
-	siteConf := site.Read()
+func NewTemplate(cfg env.Config) *Template {
+	siteConf := site.Read(cfg)
 
 	funcs := template.FuncMap{
 		"site": func(s string) string { return siteConf.Get(s) },
@@ -40,7 +40,7 @@ func (t *Template) Render(c *echo.Context, w io.Writer, name string, data any) e
 
 func Start(ctx context.Context, cfg env.Config) {
 	e := echo.New()
-	e.Renderer = NewTemplate()
+	e.Renderer = NewTemplate(cfg)
 
 	e.Use(middleware.Recover())
 	e.Use(middleware.ContextTimeout(time.Second * 30))
