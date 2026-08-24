@@ -9,6 +9,7 @@ require (
 	github.com/knadh/koanf/providers/file v1.2.1
 	github.com/knadh/koanf/v2 v2.3.5
 	github.com/labstack/echo/v5 v5.0.4
+	github.com/mvrahden/go-test v1.27.0
 	github.com/pressly/goose/v3 v3.26.0
 	modernc.org/sqlite v1.44.3
 )

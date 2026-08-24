@@ -21,6 +21,7 @@ install:
 	go install github.com/mgechev/revive@latest
 	go install honnef.co/go/tools/cmd/staticcheck@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
+	go install github.com/mvrahden/go-test/cmd/gotest@latest
 
 .PHONY: goimports
 goimports:
@@ -30,12 +31,12 @@ goimports:
 .PHONY: coverage
 coverage:
 	@echo "Running tests with coverage..."
-	go test -coverprofile=coverage/coverage.out ./internal/...
+	gotest -coverprofile=coverage/coverage.out ./internal/...
 	go tool cover -func=coverage/coverage.out
 
 coverage-html:
 	@echo "Running tests with coverage..."
-	go test -coverprofile=coverage/coverage.out ./internal/...
+	gotest -coverprofile=coverage/coverage.out ./internal/...
 	go tool cover -html=coverage/coverage.out
 
 .PHONY: vet
@@ -60,7 +61,7 @@ check: goimports coverage vet staticcheck
 .PHONY: test
 test:
 	@echo "Running tests..."
-	go test ./...
+	gotest ./...
 
 .PHONY: build
 build:

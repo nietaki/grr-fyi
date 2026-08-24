@@ -6,134 +6,129 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"testing"
 	"time"
 
 	"github.com/benbjohnson/litestream"
+	"github.com/mvrahden/go-test/pkg/gotest"
 	_ "modernc.org/sqlite"
 
 	"github.com/nietaki/grr-fyi/internal/env"
 )
 
-// openAppDB opens the same SQLite file litestream is monitoring, using a WAL
-// connection exactly like the application does.
-func openAppDB(t *testing.T, path string) *sql.DB {
-	t.Helper()
+type ReplicationTestSuite struct {
+	cfg env.Config
+}
+
+func (s *ReplicationTestSuite) BeforeEach(t *gotest.T) {
+	s.cfg = env.Config{DBPath: filepath.Join(t.T().TempDir(), "app.sqlite")}
+}
+
+func openAppDB(path string) (*sql.DB, error) {
 	conn, err := sql.Open("sqlite",
 		"file:"+path+"?_pragma=busy_timeout(5000)&_pragma=journal_mode(wal)")
 	if err != nil {
-		t.Fatalf("open app db: %v", err)
+		return nil, err
 	}
 	if err := conn.Ping(); err != nil {
 		conn.Close()
-		t.Fatalf("ping app db: %v", err)
+		return nil, err
 	}
-	return conn
+	return conn, nil
 }
 
-func closeStore(t *testing.T, store *litestream.Store) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+func closeStore(ctx context.Context, store *litestream.Store) error {
+	timeoutCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	if err := store.Close(ctx); err != nil {
-		t.Fatalf("store.Close: %v", err)
-	}
+	return store.Close(timeoutCtx)
 }
 
-func TestStartFileReplica(t *testing.T) {
-	ctx := context.Background()
-	cfg := env.Config{DBPath: filepath.Join(t.TempDir(), "app.sqlite")}
+func (s *ReplicationTestSuite) TestStartFileReplica(t *gotest.T) {
+	t.It("creates replica directory after sync", func(it *gotest.T) {
+		ctx := context.Background()
 
-	store, err := Start(ctx, cfg)
-	if err != nil {
-		t.Fatalf("Start: %v", err)
-	}
+		store, err := Start(ctx, s.cfg)
+		gotest.NoError(it, err, "Start")
 
-	// Write a transaction and flush it so the replica directory is created.
-	appDB := openAppDB(t, cfg.DBPath)
-	if _, err := appDB.Exec(`CREATE TABLE kv (k TEXT PRIMARY KEY, v TEXT)`); err != nil {
-		t.Fatalf("create table: %v", err)
-	}
-	if _, err := appDB.Exec(`INSERT INTO kv (k, v) VALUES ('a', 'b')`); err != nil {
-		t.Fatalf("insert: %v", err)
-	}
-	if err := appDB.Close(); err != nil {
-		t.Fatalf("close app db: %v", err)
-	}
-	if _, err := store.SyncDB(ctx, cfg.DBPath, true); err != nil {
-		t.Fatalf("sync: %v", err)
-	}
-	closeStore(t, store)
+		appDB, err := openAppDB(s.cfg.DBPath)
+		gotest.NoError(it, err, "open app db")
 
-	replicaDir := filepath.Join(filepath.Dir(cfg.DBPath), "litestream")
-	fi, err := os.Stat(replicaDir)
-	if err != nil {
-		t.Fatalf("file replica dir missing: %v", err)
-	}
-	if !fi.IsDir() {
-		t.Fatalf("expected %s to be a directory", replicaDir)
-	}
+		_, err = appDB.Exec(`CREATE TABLE kv (k TEXT PRIMARY KEY, v TEXT)`)
+		gotest.NoError(it, err, "create table")
+
+		_, err = appDB.Exec(`INSERT INTO kv (k, v) VALUES ('a', 'b')`)
+		gotest.NoError(it, err, "insert")
+
+		err = appDB.Close()
+		gotest.NoError(it, err, "close app db")
+
+		_, err = store.SyncDB(ctx, s.cfg.DBPath, true)
+		gotest.NoError(it, err, "sync")
+
+		err = closeStore(ctx, store)
+		gotest.NoError(it, err, "store.Close")
+
+		replicaDir := filepath.Join(filepath.Dir(s.cfg.DBPath), "litestream")
+		fi, err := os.Stat(replicaDir)
+		gotest.NoError(it, err, "file replica dir missing")
+		gotest.True(it, fi.IsDir(), "expected %s to be a directory", replicaDir)
+	})
 }
 
-func TestStartRestoresDeletedDatabase(t *testing.T) {
-	ctx := context.Background()
-	cfg := env.Config{DBPath: filepath.Join(t.TempDir(), "app.sqlite")}
+func (s *ReplicationTestSuite) TestStartRestoresDeletedDatabase(t *gotest.T) {
+	t.It("restores database from replica after local files are deleted", func(it *gotest.T) {
+		ctx := context.Background()
 
-	// Phase 1: create data, force a snapshot into the replica, then shut down.
-	store, err := Start(ctx, cfg)
-	if err != nil {
-		t.Fatalf("Start (1): %v", err)
-	}
+		store, err := Start(ctx, s.cfg)
+		gotest.NoError(it, err, "Start (1)")
 
-	appDB := openAppDB(t, cfg.DBPath)
-	if _, err := appDB.Exec(`CREATE TABLE kv (k TEXT PRIMARY KEY, v TEXT)`); err != nil {
-		t.Fatalf("create table: %v", err)
-	}
-	if _, err := appDB.Exec(`INSERT INTO kv (k, v) VALUES ('answer', '42')`); err != nil {
-		t.Fatalf("insert: %v", err)
-	}
-	if err := appDB.Close(); err != nil {
-		t.Fatalf("close app db: %v", err)
-	}
+		appDB, err := openAppDB(s.cfg.DBPath)
+		gotest.NoError(it, err, "open app db (1)")
 
-	// Flush frames, then force a level-9 snapshot (snapshots otherwise only run
-	// on the store's 24h interval).
-	if _, err := store.SyncDB(ctx, cfg.DBPath, true); err != nil {
-		t.Fatalf("sync (1): %v", err)
-	}
-	db := store.DBs()[0]
-	if _, err := store.CompactDB(ctx, db, store.SnapshotLevel()); err != nil &&
-		!errors.Is(err, litestream.ErrNoCompaction) &&
-		!errors.Is(err, litestream.ErrCompactionTooEarly) {
-		t.Fatalf("force snapshot: %v", err)
-	}
-	if _, err := store.SyncDB(ctx, cfg.DBPath, true); err != nil {
-		t.Fatalf("sync (2): %v", err)
-	}
-	closeStore(t, store)
+		_, err = appDB.Exec(`CREATE TABLE kv (k TEXT PRIMARY KEY, v TEXT)`)
+		gotest.NoError(it, err, "create table")
 
-	// Simulate a lost local database (fresh pod / wiped volume).
-	for _, suffix := range []string{"", "-wal", "-shm"} {
-		if err := os.Remove(cfg.DBPath + suffix); err != nil && !errors.Is(err, os.ErrNotExist) {
-			t.Fatalf("remove %s%s: %v", cfg.DBPath, suffix, err)
+		_, err = appDB.Exec(`INSERT INTO kv (k, v) VALUES ('answer', '42')`)
+		gotest.NoError(it, err, "insert")
+
+		err = appDB.Close()
+		gotest.NoError(it, err, "close app db (1)")
+
+		_, err = store.SyncDB(ctx, s.cfg.DBPath, true)
+		gotest.NoError(it, err, "sync (1)")
+
+		db := store.DBs()[0]
+		_, err = store.CompactDB(ctx, db, store.SnapshotLevel())
+		if err != nil && !errors.Is(err, litestream.ErrNoCompaction) &&
+			!errors.Is(err, litestream.ErrCompactionTooEarly) {
+			gotest.NoError(it, err, "force snapshot")
 		}
-	}
 
-	// Phase 2: starting again must restore the database from the replica.
-	store2, err := Start(ctx, cfg)
-	if err != nil {
-		t.Fatalf("Start (2): %v", err)
-	}
-	defer closeStore(t, store2)
+		_, err = store.SyncDB(ctx, s.cfg.DBPath, true)
+		gotest.NoError(it, err, "sync (2)")
 
-	appDB2 := openAppDB(t, cfg.DBPath)
-	defer appDB2.Close()
+		err = closeStore(ctx, store)
+		gotest.NoError(it, err, "store.Close (1)")
 
-	var v string
-	if err := appDB2.QueryRow(`SELECT v FROM kv WHERE k = 'answer'`).Scan(&v); err != nil {
-		t.Fatalf("query restored row: %v", err)
-	}
-	if v != "42" {
-		t.Fatalf("restored value = %q, want 42", v)
-	}
+		for _, suffix := range []string{"", "-wal", "-shm"} {
+			err = os.Remove(s.cfg.DBPath + suffix)
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				gotest.NoError(it, err, "remove %s%s", s.cfg.DBPath, suffix)
+			}
+		}
+
+		store2, err := Start(ctx, s.cfg)
+		gotest.NoError(it, err, "Start (2)")
+		defer func() {
+			_ = closeStore(ctx, store2)
+		}()
+
+		appDB2, err := openAppDB(s.cfg.DBPath)
+		gotest.NoError(it, err, "open app db (2)")
+		defer appDB2.Close()
+
+		var v string
+		err = appDB2.QueryRow(`SELECT v FROM kv WHERE k = 'answer'`).Scan(&v)
+		gotest.NoError(it, err, "query restored row")
+		gotest.Equal(it, "42", v)
+	})
 }

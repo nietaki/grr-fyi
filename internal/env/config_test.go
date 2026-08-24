@@ -1,39 +1,34 @@
 package env
 
-import "testing"
+import (
+	"github.com/mvrahden/go-test/pkg/gotest"
+)
 
-func TestDefaultValues(t *testing.T) {
-	cfg := Load()
-	if cfg.ServerPort != "30666" {
-		t.Errorf("Expected default ServerPort to be '30666', got '%s'", cfg.ServerPort)
-	}
+type ConfigTestSuite struct{}
+
+func (s *ConfigTestSuite) TestDefaultValues(t *gotest.T) {
+	t.It("loads default ServerPort", func(it *gotest.T) {
+		cfg := Load()
+		gotest.Equal(it, "30666", cfg.ServerPort)
+	})
 }
 
-func TestRandomFailure(t *testing.T) {
-	t.Skip("skipping deliberately failing test")
-	t.Fatal("This test is designed to fail randomly to demonstrate test failure handling.")
+func (s *ConfigTestSuite) TestRandomFailure(t *gotest.T) {
+	t.Skipf("skipping deliberately failing test")
 }
 
-func TestSettingCustomPort(t *testing.T) {
-	// Set the environment variable for testing
-	t.Setenv("SERVER_PORT", "8080")
-
-	cfg := Load()
-
-	if cfg.ServerPort != "8080" {
-		t.Errorf("Expected ServerPort to be '8080', got '%s'", cfg.ServerPort)
-	}
+func (s *ConfigTestSuite) TestSettingCustomPort(t *gotest.T) {
+	t.It("loads custom port from environment", func(it *gotest.T) {
+		it.Setenv("SERVER_PORT", "8080")
+		cfg := Load()
+		gotest.Equal(it, "8080", cfg.ServerPort)
+	})
 }
 
-func TestInvalidPortFormat(t *testing.T) {
-	// When SERVER_PORT has invalid characters, env.Parse accepts it
-	// This is the actual behavior of caarlos0/env library
-	t.Setenv("SERVER_PORT", "invalid_port_with_spaces")
-
-	cfg := Load()
-
-	// Should use the value provided, not default
-	if cfg.ServerPort != "invalid_port_with_spaces" {
-		t.Errorf("Expected ServerPort to be 'invalid_port_with_spaces', got '%s'", cfg.ServerPort)
-	}
+func (s *ConfigTestSuite) TestInvalidPortFormat(t *gotest.T) {
+	t.It("accepts invalid port format from environment", func(it *gotest.T) {
+		it.Setenv("SERVER_PORT", "invalid_port_with_spaces")
+		cfg := Load()
+		gotest.Equal(it, "invalid_port_with_spaces", cfg.ServerPort)
+	})
 }

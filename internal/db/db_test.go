@@ -6,121 +6,103 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"testing"
 
+	"github.com/mvrahden/go-test/pkg/gotest"
 	"github.com/pressly/goose/v3"
 
 	"github.com/nietaki/grr-fyi/internal/env"
 )
 
-func newTestConfig(t *testing.T) env.Config {
-	t.Helper()
-	return env.Config{DBPath: filepath.Join(t.TempDir(), "test.sqlite")}
+type DBTestSuite struct {
+	cfg env.Config
 }
 
-func TestOpenCreatesDatabaseFile(t *testing.T) {
-	ctx := context.Background()
-	cfg := newTestConfig(t)
-
-	conn, err := Open(ctx, cfg)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	defer conn.Close()
-
-	if _, err := conn.ExecContext(ctx, "CREATE TABLE t (id INTEGER)"); err != nil {
-		t.Fatalf("create table: %v", err)
-	}
-
-	if _, err := os.Stat(cfg.DBPath); err != nil {
-		t.Fatalf("database file not created: %v", err)
-	}
-
-	var mode string
-	if err := conn.QueryRowContext(ctx, "PRAGMA journal_mode").Scan(&mode); err != nil {
-		t.Fatalf("query journal_mode: %v", err)
-	}
-	if !strings.EqualFold(mode, "wal") {
-		t.Fatalf("journal_mode = %q, want wal", mode)
-	}
+func (s *DBTestSuite) BeforeEach(t *gotest.T) {
+	s.cfg = env.Config{DBPath: filepath.Join(t.T().TempDir(), "test.sqlite")}
 }
 
-func TestMigrateCreatesMetaTable(t *testing.T) {
-	ctx := context.Background()
-	cfg := newTestConfig(t)
+func (s *DBTestSuite) TestOpenCreatesDatabaseFile(t *gotest.T) {
+	t.It("creates database file and enables WAL mode", func(it *gotest.T) {
+		ctx := context.Background()
 
-	conn, err := Open(ctx, cfg)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	defer conn.Close()
+		conn, err := Open(ctx, s.cfg)
+		gotest.NoError(it, err, "Open")
+		defer conn.Close()
 
-	if err := Migrate(ctx, conn); err != nil {
-		t.Fatalf("Migrate: %v", err)
-	}
+		_, err = conn.ExecContext(ctx, "CREATE TABLE t (id INTEGER)")
+		gotest.NoError(it, err, "create table")
 
-	var name string
-	if err := conn.QueryRowContext(ctx,
-		`SELECT name FROM sqlite_master WHERE type='table' AND name='meta'`).Scan(&name); err != nil {
-		t.Fatalf("meta table not found: %v", err)
-	}
-	if name != "meta" {
-		t.Fatalf("table name = %q, want meta", name)
-	}
+		_, err = os.Stat(s.cfg.DBPath)
+		gotest.NoError(it, err, "database file not created")
+
+		var mode string
+		err = conn.QueryRowContext(ctx, "PRAGMA journal_mode").Scan(&mode)
+		gotest.NoError(it, err, "query journal_mode")
+		gotest.True(it, strings.EqualFold(mode, "wal"), "journal_mode = %q, want wal", mode)
+	})
 }
 
-func TestMigrateIsIdempotent(t *testing.T) {
-	ctx := context.Background()
-	cfg := newTestConfig(t)
+func (s *DBTestSuite) TestMigrateCreatesMetaTable(t *gotest.T) {
+	t.It("creates meta table after migration", func(it *gotest.T) {
+		ctx := context.Background()
 
-	conn, err := Open(ctx, cfg)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	defer conn.Close()
+		conn, err := Open(ctx, s.cfg)
+		gotest.NoError(it, err, "Open")
+		defer conn.Close()
 
-	for i := 0; i < 3; i++ {
-		if err := Migrate(ctx, conn); err != nil {
-			t.Fatalf("Migrate run %d: %v", i+1, err)
+		err = Migrate(ctx, conn)
+		gotest.NoError(it, err, "Migrate")
+
+		var name string
+		err = conn.QueryRowContext(ctx,
+			`SELECT name FROM sqlite_master WHERE type='table' AND name='meta'`).Scan(&name)
+		gotest.NoError(it, err, "meta table not found")
+		gotest.Equal(it, "meta", name)
+	})
+}
+
+func (s *DBTestSuite) TestMigrateIsIdempotent(t *gotest.T) {
+	t.It("can run migrations multiple times safely", func(it *gotest.T) {
+		ctx := context.Background()
+
+		conn, err := Open(ctx, s.cfg)
+		gotest.NoError(it, err, "Open")
+		defer conn.Close()
+
+		for i := 0; i < 3; i++ {
+			err = Migrate(ctx, conn)
+			gotest.NoError(it, err, "Migrate run %d", i+1)
 		}
-	}
 
-	var maxVersion int
-	if err := conn.QueryRowContext(ctx,
-		`SELECT MAX(version_id) FROM goose_db_version WHERE is_applied = 1`).Scan(&maxVersion); err != nil {
-		t.Fatalf("query max version: %v", err)
-	}
-	if maxVersion != 1 {
-		t.Fatalf("max applied version = %d, want 1", maxVersion)
-	}
+		var maxVersion int
+		err = conn.QueryRowContext(ctx,
+			`SELECT MAX(version_id) FROM goose_db_version WHERE is_applied = 1`).Scan(&maxVersion)
+		gotest.NoError(it, err, "query max version")
+		gotest.Equal(it, 1, maxVersion)
+	})
 }
 
-func TestMigrateDown(t *testing.T) {
-	ctx := context.Background()
-	cfg := newTestConfig(t)
+func (s *DBTestSuite) TestMigrateDown(t *gotest.T) {
+	t.It("drops all tables when migrating down", func(it *gotest.T) {
+		ctx := context.Background()
 
-	conn, err := Open(ctx, cfg)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	defer conn.Close()
+		conn, err := Open(ctx, s.cfg)
+		gotest.NoError(it, err, "Open")
+		defer conn.Close()
 
-	if err := Migrate(ctx, conn); err != nil {
-		t.Fatalf("Migrate: %v", err)
-	}
+		err = Migrate(ctx, conn)
+		gotest.NoError(it, err, "Migrate")
 
-	goose.SetBaseFS(migrationsFS)
-	if err := goose.SetDialect("sqlite3"); err != nil {
-		t.Fatalf("set goose dialect: %v", err)
-	}
-	if err := goose.Down(conn, "migrations"); err != nil {
-		t.Fatalf("goose.Down: %v", err)
-	}
+		goose.SetBaseFS(migrationsFS)
+		err = goose.SetDialect("sqlite3")
+		gotest.NoError(it, err, "set goose dialect")
 
-	var name string
-	err = conn.QueryRowContext(ctx,
-		`SELECT name FROM sqlite_master WHERE type='table' AND name='meta'`).Scan(&name)
-	if err != sql.ErrNoRows {
-		t.Fatalf("expected meta table to be dropped, got err=%v name=%q", err, name)
-	}
+		err = goose.Down(conn, "migrations")
+		gotest.NoError(it, err, "goose.Down")
+
+		var name string
+		err = conn.QueryRowContext(ctx,
+			`SELECT name FROM sqlite_master WHERE type='table' AND name='meta'`).Scan(&name)
+		gotest.ErrorIs(it, err, sql.ErrNoRows, "expected meta table to be dropped")
+	})
 }
