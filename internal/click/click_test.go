@@ -42,7 +42,7 @@ func (s *ClickTestSuite) TestRecordClick(t *gotest.T) {
 	t.It("records a click asynchronously", func(it *gotest.T) {
 		ctx := context.Background()
 
-		resp, err := s.linkService.Create(ctx, link.CreateRequest{TargetURL: "https://example.com", CustomSlug: "test"})
+		_, err := s.linkService.Create(ctx, link.CreateRequest{TargetURL: "https://example.com", CustomSlug: "test"})
 		gotest.NoError(it, err, "Create")
 
 		linkObj, err := s.linkService.Get(ctx, "test")
@@ -63,8 +63,6 @@ func (s *ClickTestSuite) TestRecordClick(t *gotest.T) {
 		count, err := s.clickService.Count(ctx, linkObj.ID)
 		gotest.NoError(it, err, "Count")
 		gotest.Equal(it, int64(1), count)
-
-		_ = resp
 	})
 }
 

@@ -5,10 +5,13 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
+
+const timeFormat = "2006-01-02 15:04:05.999999999 -0700 MST"
 
 type Service struct {
 	db *sql.DB
@@ -85,40 +88,30 @@ func (s *Service) generateAutoSlug(ctx context.Context) (string, error) {
 }
 
 func (s *Service) Resolve(ctx context.Context, slug string) (*Link, error) {
-	var link Link
-	var revokedAt sql.NullString
-	var createdAt string
-
-	err := s.db.QueryRowContext(ctx,
-		`SELECT id, slug, target_url, created_at, revoked_at FROM links WHERE slug = ?`,
-		slug).Scan(&link.ID, &link.Slug, &link.TargetURL, &createdAt, &revokedAt)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
-		}
-		return nil, err
-	}
-
-	link.CreatedAt, err = time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", createdAt)
+	link, err := s.scanLinkBySlug(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
 
-	if revokedAt.Valid {
+	if link.RevokedAt != nil {
 		return nil, ErrRevoked
 	}
 
-	return &link, nil
+	return link, nil
 }
 
 func (s *Service) Get(ctx context.Context, slug string) (*Link, error) {
+	return s.scanLinkBySlug(ctx, slug)
+}
+
+func (s *Service) scanLinkBySlug(ctx context.Context, slug string) (*Link, error) {
 	var link Link
 	var revokedAt sql.NullString
 	var createdAt string
 
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, slug, target_url, created_at, revoked_at FROM links WHERE slug = ?`,
-		slug).Scan(&link.ID, &link.Slug, &link.TargetURL, &createdAt, &revokedAt)
+		`SELECT id, slug, target_url, created_at, revoked_at, claim_key_hash FROM links WHERE slug = ?`,
+		slug).Scan(&link.ID, &link.Slug, &link.TargetURL, &createdAt, &revokedAt, &link.ClaimKeyHash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
@@ -126,13 +119,13 @@ func (s *Service) Get(ctx context.Context, slug string) (*Link, error) {
 		return nil, err
 	}
 
-	link.CreatedAt, err = time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", createdAt)
+	link.CreatedAt, err = time.Parse(timeFormat, createdAt)
 	if err != nil {
 		return nil, err
 	}
 
 	if revokedAt.Valid {
-		t, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", revokedAt.String)
+		t, err := time.Parse(timeFormat, revokedAt.String)
 		if err != nil {
 			return nil, err
 		}
@@ -148,7 +141,7 @@ func (s *Service) Update(ctx context.Context, slug, claimKey, newTarget string) 
 		return err
 	}
 
-	err = s.verifyClaimKey(ctx, link, claimKey)
+	err = verifyClaimKey(link, claimKey)
 	if err != nil {
 		return err
 	}
@@ -165,7 +158,7 @@ func (s *Service) Revoke(ctx context.Context, slug, claimKey string) error {
 		return err
 	}
 
-	err = s.verifyClaimKey(ctx, link, claimKey)
+	err = verifyClaimKey(link, claimKey)
 	if err != nil {
 		return err
 	}
@@ -177,15 +170,8 @@ func (s *Service) Revoke(ctx context.Context, slug, claimKey string) error {
 	return err
 }
 
-func (s *Service) verifyClaimKey(ctx context.Context, link *Link, claimKey string) error {
-	var storedHash string
-	err := s.db.QueryRowContext(ctx,
-		`SELECT claim_key_hash FROM links WHERE slug = ?`, link.Slug).Scan(&storedHash)
-	if err != nil {
-		return err
-	}
-
-	err = bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(claimKey))
+func verifyClaimKey(link *Link, claimKey string) error {
+	err := bcrypt.CompareHashAndPassword([]byte(link.ClaimKeyHash), []byte(claimKey))
 	if err != nil {
 		return ErrInvalidClaim
 	}
@@ -208,19 +194,5 @@ func generateClaimKey() (string, error) {
 }
 
 func isUniqueConstraintError(err error) bool {
-	return err != nil && (errors.Is(err, sql.ErrNoRows) ||
-		(err.Error() != "" && contains(err.Error(), "UNIQUE constraint failed")))
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && findSubstring(s, substr))
-}
-
-func findSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
+	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
 }

@@ -16,12 +16,13 @@ type CreateResponse struct {
 }
 
 type Link struct {
-	ID         int64
-	Slug       string
-	TargetURL  string
-	CreatedAt  time.Time
-	RevokedAt  *time.Time
-	ClickCount int64
+	ID           int64
+	Slug         string
+	TargetURL    string
+	CreatedAt    time.Time
+	RevokedAt    *time.Time
+	ClickCount   int64
+	ClaimKeyHash string
 }
 
 var (

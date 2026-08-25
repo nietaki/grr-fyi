@@ -2,33 +2,17 @@ package link
 
 import (
 	"context"
-	"path/filepath"
 	"time"
 
 	"github.com/mvrahden/go-test/pkg/gotest"
-	_ "modernc.org/sqlite"
-
-	"github.com/nietaki/grr-fyi/internal/db"
-	"github.com/nietaki/grr-fyi/internal/env"
 )
 
 type ManagementTestSuite struct {
 	service *Service
-	dbPath  string
 }
 
 func (s *ManagementTestSuite) BeforeEach(t *gotest.T) {
-	s.dbPath = filepath.Join(t.T().TempDir(), "test.sqlite")
-	cfg := env.Config{DBPath: s.dbPath}
-
-	ctx := context.Background()
-	conn, err := db.Open(ctx, cfg)
-	gotest.NoError(t, err, "Open")
-
-	err = db.Migrate(ctx, conn)
-	gotest.NoError(t, err, "Migrate")
-
-	s.service = NewService(conn)
+	s.service = setupTestService(t)
 }
 
 func (s *ManagementTestSuite) TestGetActiveLink(t *gotest.T) {
