@@ -49,7 +49,7 @@ func (s *TxScopeTestSuite) TestCrossStoreTransactionCommit(t *gotest.T) {
 
 		// Create a link to work with
 		createdAt := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-		err := linkStore.CreateLink(ctx, "test", "https://example.com", "hash", createdAt)
+		_, err := linkStore.CreateLink(ctx, "test", "https://example.com", "hash", createdAt)
 		gotest.NoError(it, err, "Create link")
 
 		// Perform cross-store transaction
@@ -90,7 +90,7 @@ func (s *TxScopeTestSuite) TestCrossStoreTransactionRollback(t *gotest.T) {
 
 		// Create a link to work with
 		createdAt := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-		err := linkStore.CreateLink(ctx, "rollback-test", "https://example.com", "hash", createdAt)
+		_, err := linkStore.CreateLink(ctx, "rollback-test", "https://example.com", "hash", createdAt)
 		gotest.NoError(it, err, "Create link")
 
 		// Get original state

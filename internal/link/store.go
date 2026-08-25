@@ -23,20 +23,33 @@ func NewStore(db store.DBTX) *Store {
 	return &Store{DB: db}
 }
 
-func (s *Store) CreateLink(ctx context.Context, slug, targetURL, claimKeyHash string, createdAt time.Time) error {
-	_, err := s.DB.ExecContext(ctx,
+func (s *Store) CreateLink(ctx context.Context, slug, targetURL, claimKeyHash string, createdAt time.Time) (*Link, error) {
+	result, err := s.DB.ExecContext(ctx,
 		"INSERT INTO links (slug, target_url, claim_key_hash, created_at) VALUES (?, ?, ?, ?)",
 		slug, targetURL, claimKeyHash, createdAt)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			return err
+			return nil, err
 		}
 		if isUniqueConstraintError(err) {
-			return ErrSlugTaken
+			return nil, ErrSlugTaken
 		}
-		return fmt.Errorf("create link: %w", err)
+		return nil, fmt.Errorf("create link: %w", err)
 	}
-	return nil
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("create link: get last insert id: %w", err)
+	}
+
+	return &Link{
+		ID:           id,
+		Slug:         slug,
+		TargetURL:    targetURL,
+		CreatedAt:    createdAt,
+		ClickCount:   0,
+		ClaimKeyHash: claimKeyHash,
+	}, nil
 }
 
 func (s *Store) GetBySlug(ctx context.Context, slug string) (*Link, error) {

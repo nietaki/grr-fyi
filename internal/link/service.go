@@ -20,10 +20,7 @@ func NewService(store *Store, txScope *store.TxScope) *Service {
 }
 
 func (s *Service) Create(ctx context.Context, req CreateRequest) (*CreateResponse, error) {
-	claimKey, err := generateClaimKey()
-	if err != nil {
-		return nil, err
-	}
+	claimKey := generateClaimKey()
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(claimKey), bcrypt.DefaultCost)
 	if err != nil {
@@ -41,16 +38,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*CreateRespons
 	}
 
 	now := time.Now().UTC()
-	err = s.store.CreateLink(ctx, slug, req.TargetURL, string(hash), now)
+	link, err := s.store.CreateLink(ctx, slug, req.TargetURL, string(hash), now)
 	if err != nil {
 		return nil, err
-	}
-
-	link := &Link{
-		Slug:       slug,
-		TargetURL:  req.TargetURL,
-		CreatedAt:  now,
-		ClickCount: 0,
 	}
 
 	return &CreateResponse{
@@ -150,11 +140,10 @@ func verifyClaimKey(link *Link, claimKey string) error {
 	return nil
 }
 
-func generateClaimKey() (string, error) {
+func generateClaimKey() string {
 	bytes := make([]byte, 8)
-	_, err := rand.Read(bytes)
-	if err != nil {
-		return "", err
+	if _, err := rand.Read(bytes); err != nil {
+		panic(err)
 	}
 
 	var n uint64
@@ -162,5 +151,5 @@ func generateClaimKey() (string, error) {
 		n = n*256 + uint64(b)
 	}
 
-	return encodeBase62(int64(n % (1 << 62))), nil
+	return encodeBase62(int64(n % (1 << 62)))
 }
