@@ -7,6 +7,84 @@
 - [x] modernc sqlite
 - [x] litestream
 
+## URL Shortener Data Model
+
+### Schema Overview
+
+Three tables in `internal/db/migrations/00002_url_shortener.sql`:
+
+- **`links`** - The core aggregate: slug, target_url, claim_key_hash, timestamps
+- **`clicks`** - Async click tracking with ip_hash, referrer, country (nullable)
+- **`slug_sequence`** - Singleton table (id=1) tracking the next auto-slug value
+
+### Dynamic Slug Length
+
+Early links get shorter slugs, later ones get longer. We use **sequential base62 encoding**:
+
+- `slug_sequence.next_value` starts at 0
+- ID 0 → `a`, ID 1 → `b`, ... ID 61 → `9`, ID 62 → `ba`, etc.
+- Base62 charset: `a-z`, `A-Z`, `0-9` (62 characters)
+- Each new link increments the sequence
+
+**Why not random?** Sequential encoding is deterministic, collision-free, and naturally produces short slugs early. The tradeoff is that someone could estimate total link count by decoding slugs, but this is acceptable for our use case.
+
+### Custom Slugs
+
+Custom slugs coexist with auto-generated ones:
+
+1. If `CustomSlug` is provided → use it directly
+2. If empty → read `slug_sequence.next_value`, encode to base62, increment sequence
+3. If custom slug collides → return `ErrSlugTaken`
+
+Custom slugs don't interfere with the sequence. The sequence only advances for auto-generated slugs.
+
+### Claim Key System
+
+No user accounts. Instead, each link has a **claim key** for edit/revoke operations:
+
+- **Generation**: 8 random bytes → base62 encoded (~11 characters)
+- **Storage**: bcrypt-hashed before storing in `claim_key_hash`
+- **Return**: Plaintext shown once in `CreateResponse.ClaimKey`
+- **Verification**: `bcrypt.CompareHashAndPassword(stored_hash, submitted_key)`
+
+**Why hash?** If the database is compromised, attackers can't forge claim keys. Like passwords: verify without storing the secret.
+
+**UX implication**: Lost claim key = lost link. No recovery possible.
+
+### Async Click Tracking
+
+Clicks are recorded asynchronously to avoid adding latency to redirects:
+
+- `click.Service` has a buffered channel (configurable size)
+- `Record()` enqueues click info, drops silently if buffer full
+- Worker goroutine drains the channel and inserts into `clicks` table
+- `Close()` flushes remaining clicks before shutdown
+
+**Tradeoff**: Clicks in the channel are lost on crash. We prioritize availability over perfect analytics.
+
+### Domain Concepts
+
+| Term | Meaning |
+|------|---------|
+| **Link** | Aggregate root - a shortened URL record |
+| **Slug** | The short identifier (e.g., `abc123` in `grr.fyi/abc123`) |
+| **Target URL** | The destination URL being shortened |
+| **Claim Key** | Secret token proving ownership (for edit/revoke) |
+
+### Service API
+
+**`internal/link.Service`**:
+- `Create(ctx, CreateRequest) (*CreateResponse, error)` - Create link with custom or auto slug
+- `Resolve(ctx, slug) (*Link, error)` - Get active link (returns `ErrNotFound`/`ErrRevoked`)
+- `Get(ctx, slug) (*Link, error)` - Get any link including revoked (for edit page)
+- `Update(ctx, slug, claimKey, newTarget) error` - Update target URL
+- `Revoke(ctx, slug, claimKey) error` - Mark link as revoked
+
+**`internal/click.Service`**:
+- `Record(ctx, Info) error` - Enqueue click (non-blocking, drops if full)
+- `Count(ctx, linkID) (int64, error)` - Aggregate count from clicks table
+- `Close()` - Graceful shutdown, flush remaining clicks
+
 ## SQLite persistence & Litestream replication
 
 The app stores data in a single SQLite file (`DB_PATH`, default `db/filedb.sqlite`)

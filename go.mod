@@ -12,6 +12,7 @@ require (
 	github.com/mvrahden/go-test v1.27.0
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/urfave/cli/v3 v3.11.0
+	golang.org/x/crypto v0.52.0
 	modernc.org/sqlite v1.44.3
 )
 

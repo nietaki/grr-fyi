@@ -78,7 +78,7 @@ func (s *DBTestSuite) TestMigrateIsIdempotent(t *gotest.T) {
 		err = conn.QueryRowContext(ctx,
 			`SELECT MAX(version_id) FROM goose_db_version WHERE is_applied = 1`).Scan(&maxVersion)
 		gotest.NoError(it, err, "query max version")
-		gotest.Equal(it, 1, maxVersion)
+		gotest.Equal(it, 2, maxVersion)
 	})
 }
 
@@ -97,12 +97,56 @@ func (s *DBTestSuite) TestMigrateDown(t *gotest.T) {
 		err = goose.SetDialect("sqlite3")
 		gotest.NoError(it, err, "set goose dialect")
 
-		err = goose.Down(conn, "migrations")
-		gotest.NoError(it, err, "goose.Down")
+		err = goose.Reset(conn, "migrations")
+		gotest.NoError(it, err, "goose.Reset")
 
 		var name string
 		err = conn.QueryRowContext(ctx,
 			`SELECT name FROM sqlite_master WHERE type='table' AND name='meta'`).Scan(&name)
 		gotest.ErrorIs(it, err, sql.ErrNoRows, "expected meta table to be dropped")
+
+		err = conn.QueryRowContext(ctx,
+			`SELECT name FROM sqlite_master WHERE type='table' AND name='links'`).Scan(&name)
+		gotest.ErrorIs(it, err, sql.ErrNoRows, "expected links table to be dropped")
+	})
+}
+
+func (s *DBTestSuite) TestMigrateCreatesUrlShortenerTables(t *gotest.T) {
+	t.It("creates links, clicks, and slug_sequence tables", func(it *gotest.T) {
+		ctx := context.Background()
+
+		conn, err := Open(ctx, s.cfg)
+		gotest.NoError(it, err, "Open")
+		defer conn.Close()
+
+		err = Migrate(ctx, conn)
+		gotest.NoError(it, err, "Migrate")
+
+		expectedTables := []string{"links", "clicks", "slug_sequence"}
+		for _, table := range expectedTables {
+			var name string
+			err = conn.QueryRowContext(ctx,
+				`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, table).Scan(&name)
+			gotest.NoError(it, err, "table %q not found", table)
+			gotest.Equal(it, table, name)
+		}
+	})
+}
+
+func (s *DBTestSuite) TestSlugSequenceInitialized(t *gotest.T) {
+	t.It("initializes slug_sequence with next_value = 0", func(it *gotest.T) {
+		ctx := context.Background()
+
+		conn, err := Open(ctx, s.cfg)
+		gotest.NoError(it, err, "Open")
+		defer conn.Close()
+
+		err = Migrate(ctx, conn)
+		gotest.NoError(it, err, "Migrate")
+
+		var nextValue int
+		err = conn.QueryRowContext(ctx, `SELECT next_value FROM slug_sequence WHERE id = 1`).Scan(&nextValue)
+		gotest.NoError(it, err, "slug_sequence not initialized")
+		gotest.Equal(it, 0, nextValue)
 	})
 }
