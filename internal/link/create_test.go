@@ -60,8 +60,8 @@ func (s *CreateTestSuite) TestCreateAutoSlugIsSequential(t *gotest.T) {
 		resp2, err := s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com/2"})
 		gotest.NoError(it, err, "Create 2")
 
-		gotest.Equal(it, "a", resp1.Link.Slug)
-		gotest.Equal(it, "b", resp2.Link.Slug)
+		gotest.Equal(it, EncodeBase62(0), resp1.Link.Slug)
+		gotest.Equal(it, EncodeBase62(1), resp2.Link.Slug)
 	})
 }
 
@@ -111,7 +111,7 @@ func (s *CreateTestSuite) TestAutoSlugSkipsCustomSlugCollision(t *gotest.T) {
 
 		_, err := s.service.Create(ctx, CreateRequest{
 			TargetURL:  "https://example.com/custom",
-			CustomSlug: "a",
+			CustomSlug: EncodeBase62(0),
 		})
 		gotest.NoError(it, err, "Create custom")
 
@@ -119,6 +119,6 @@ func (s *CreateTestSuite) TestAutoSlugSkipsCustomSlugCollision(t *gotest.T) {
 			TargetURL: "https://example.com/auto",
 		})
 		gotest.NoError(it, err, "Create auto")
-		gotest.Equal(it, "b", resp.Link.Slug)
+		gotest.Equal(it, EncodeBase62(1), resp.Link.Slug)
 	})
 }

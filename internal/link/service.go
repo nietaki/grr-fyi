@@ -62,7 +62,7 @@ func (s *Service) generateAutoSlug(ctx context.Context) (string, error) {
 				return err
 			}
 
-			slug = encodeBase62(nextValue)
+			slug = EncodeBase62(nextValue)
 
 			exists, err := txStore.SlugExists(ctx, slug)
 			if err != nil {
@@ -151,5 +151,5 @@ func generateClaimKey() string {
 		n = n*256 + uint64(b)
 	}
 
-	return encodeBase62(int64(n % (1 << 62)))
+	return EncodeBase62(int64(n % (1 << 62)))
 }

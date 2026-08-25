@@ -1,8 +1,8 @@
 package link
 
-const base62Chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const base62Chars = "9hZPFa2KlLX6rTwJkHItzxyYs0Vd4bfAMUQGmvpCjRuoDieO5c7nNqWE38gS1B"
 
-func encodeBase62(n int64) string {
+func EncodeBase62(n int64) string {
 	if n == 0 {
 		return string(base62Chars[0])
 	}
@@ -15,7 +15,7 @@ func encodeBase62(n int64) string {
 	return string(result)
 }
 
-func decodeBase62(s string) int64 {
+func DecodeBase62(s string) int64 {
 	var result int64
 	for _, c := range s {
 		result = result*62 + int64(charIndex(byte(c)))
