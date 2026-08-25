@@ -12,7 +12,7 @@ type ManagementTestSuite struct {
 }
 
 func (s *ManagementTestSuite) BeforeEach(t *gotest.T) {
-	s.service = setupTestService(t)
+	s.service, _ = setupTestService(t)
 }
 
 func (s *ManagementTestSuite) TestGetActiveLink(t *gotest.T) {

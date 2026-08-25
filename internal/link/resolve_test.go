@@ -11,7 +11,7 @@ type ResolveTestSuite struct {
 }
 
 func (s *ResolveTestSuite) BeforeEach(t *gotest.T) {
-	s.service = setupTestService(t)
+	s.service, _ = setupTestService(t)
 }
 
 func (s *ResolveTestSuite) TestResolveActiveLink(t *gotest.T) {

@@ -2,16 +2,18 @@ package link
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/mvrahden/go-test/pkg/gotest"
 )
 
 type CreateTestSuite struct {
 	service *Service
+	conn    *sql.DB
 }
 
 func (s *CreateTestSuite) BeforeEach(t *gotest.T) {
-	s.service = setupTestService(t)
+	s.service, s.conn = setupTestService(t)
 }
 
 func (s *CreateTestSuite) TestCreateWithCustomSlug(t *gotest.T) {
@@ -83,7 +85,7 @@ func (s *CreateTestSuite) TestCreateClaimKeyIsHashed(t *gotest.T) {
 		gotest.NoError(it, err, "Create")
 
 		var storedHash string
-		err = s.service.db.QueryRowContext(ctx,
+		err = s.conn.QueryRowContext(ctx,
 			"SELECT claim_key_hash FROM links WHERE slug = ?", resp.Link.Slug).Scan(&storedHash)
 		gotest.NoError(it, err, "query hash")
 

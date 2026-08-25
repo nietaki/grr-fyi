@@ -2,6 +2,7 @@ package link
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 
 	"github.com/mvrahden/go-test/pkg/gotest"
@@ -11,7 +12,7 @@ import (
 	"github.com/nietaki/grr-fyi/internal/env"
 )
 
-func setupTestService(t *gotest.T) *Service {
+func setupTestService(t *gotest.T) (*Service, *sql.DB) {
 	dbPath := filepath.Join(t.T().TempDir(), "test.sqlite")
 	cfg := env.Config{DBPath: dbPath}
 
@@ -22,5 +23,6 @@ func setupTestService(t *gotest.T) *Service {
 	err = db.Migrate(ctx, conn)
 	gotest.NoError(t, err, "Migrate")
 
-	return NewService(conn)
+	store := NewStore(conn)
+	return NewService(store), conn
 }

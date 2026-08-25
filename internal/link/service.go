@@ -3,22 +3,17 @@ package link
 import (
 	"context"
 	"crypto/rand"
-	"database/sql"
-	"errors"
-	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-const timeFormat = "2006-01-02 15:04:05.999999999 -0700 MST"
-
 type Service struct {
-	db *sql.DB
+	store *Store
 }
 
-func NewService(db *sql.DB) *Service {
-	return &Service{db: db}
+func NewService(store *Store) *Service {
+	return &Service{store: store}
 }
 
 func (s *Service) Create(ctx context.Context, req CreateRequest) (*CreateResponse, error) {
@@ -43,16 +38,8 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*CreateRespons
 	}
 
 	now := time.Now().UTC()
-	_, err = s.db.ExecContext(ctx,
-		`INSERT INTO links (slug, target_url, claim_key_hash, created_at) VALUES (?, ?, ?, ?)`,
-		slug, req.TargetURL, string(hash), now)
+	err = s.store.CreateLink(ctx, slug, req.TargetURL, string(hash), now)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			return nil, err
-		}
-		if isUniqueConstraintError(err) {
-			return nil, ErrSlugTaken
-		}
 		return nil, err
 	}
 
@@ -71,33 +58,42 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*CreateRespons
 
 func (s *Service) generateAutoSlug(ctx context.Context) (string, error) {
 	for {
-		var nextValue int64
-		err := s.db.QueryRowContext(ctx, "SELECT next_value FROM slug_sequence WHERE id = 1").Scan(&nextValue)
+		var slug string
+		var advanced bool
+
+		err := s.store.WithTx(ctx, func(tx *Store) error {
+			nextValue, err := tx.NextSlugSequence(ctx)
+			if err != nil {
+				return err
+			}
+
+			slug = encodeBase62(nextValue)
+
+			exists, err := tx.SlugExists(ctx, slug)
+			if err != nil {
+				return err
+			}
+
+			if err := tx.SetNextSlugValue(ctx, nextValue+1); err != nil {
+				return err
+			}
+
+			if !exists {
+				advanced = true
+			}
+			return nil
+		})
 		if err != nil {
 			return "", err
 		}
-
-		slug := encodeBase62(nextValue)
-
-		var exists bool
-		err = s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM links WHERE slug = ?)", slug).Scan(&exists)
-		if err != nil {
-			return "", err
-		}
-
-		_, err = s.db.ExecContext(ctx, "UPDATE slug_sequence SET next_value = ? WHERE id = 1", nextValue+1)
-		if err != nil {
-			return "", err
-		}
-
-		if !exists {
+		if advanced {
 			return slug, nil
 		}
 	}
 }
 
 func (s *Service) Resolve(ctx context.Context, slug string) (*Link, error) {
-	link, err := s.scanLinkBySlug(ctx, slug)
+	link, err := s.store.GetBySlug(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
@@ -110,38 +106,7 @@ func (s *Service) Resolve(ctx context.Context, slug string) (*Link, error) {
 }
 
 func (s *Service) Get(ctx context.Context, slug string) (*Link, error) {
-	return s.scanLinkBySlug(ctx, slug)
-}
-
-func (s *Service) scanLinkBySlug(ctx context.Context, slug string) (*Link, error) {
-	var link Link
-	var revokedAt sql.NullString
-	var createdAt string
-
-	err := s.db.QueryRowContext(ctx,
-		`SELECT id, slug, target_url, created_at, revoked_at, claim_key_hash FROM links WHERE slug = ?`,
-		slug).Scan(&link.ID, &link.Slug, &link.TargetURL, &createdAt, &revokedAt, &link.ClaimKeyHash)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
-		}
-		return nil, err
-	}
-
-	link.CreatedAt, err = time.Parse(timeFormat, createdAt)
-	if err != nil {
-		return nil, err
-	}
-
-	if revokedAt.Valid {
-		t, err := time.Parse(timeFormat, revokedAt.String)
-		if err != nil {
-			return nil, err
-		}
-		link.RevokedAt = &t
-	}
-
-	return &link, nil
+	return s.store.GetBySlug(ctx, slug)
 }
 
 func (s *Service) Update(ctx context.Context, slug, claimKey, newTarget string) error {
@@ -155,10 +120,7 @@ func (s *Service) Update(ctx context.Context, slug, claimKey, newTarget string) 
 		return err
 	}
 
-	_, err = s.db.ExecContext(ctx,
-		`UPDATE links SET target_url = ? WHERE slug = ?`,
-		newTarget, slug)
-	return err
+	return s.store.UpdateTargetURL(ctx, slug, newTarget)
 }
 
 func (s *Service) Revoke(ctx context.Context, slug, claimKey string) error {
@@ -172,11 +134,7 @@ func (s *Service) Revoke(ctx context.Context, slug, claimKey string) error {
 		return err
 	}
 
-	now := time.Now().UTC()
-	_, err = s.db.ExecContext(ctx,
-		`UPDATE links SET revoked_at = ? WHERE slug = ?`,
-		now, slug)
-	return err
+	return s.store.RevokeLink(ctx, slug, time.Now().UTC())
 }
 
 func verifyClaimKey(link *Link, claimKey string) error {
@@ -200,8 +158,4 @@ func generateClaimKey() (string, error) {
 	}
 
 	return encodeBase62(int64(n % (1 << 62))), nil
-}
-
-func isUniqueConstraintError(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
 }
