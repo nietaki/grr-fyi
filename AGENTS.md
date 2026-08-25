@@ -32,6 +32,40 @@ make build        # go build
 - **Suite pattern**: Use `type XxxTestSuite struct{}` with `BeforeEach(t *gotest.T)` for setup and `TestXxx(t *gotest.T)` methods with `t.It("description", func(it *gotest.T) { ... })` subtests.
 - **Assertions**: Use `gotest.Equal`, `gotest.NoError`, `gotest.True`, etc. instead of manual `if err != nil { t.Fatalf(...) }` patterns.
 
+## Feature Implementation Approach
+
+Follow a **TDD (Test-Driven Development) workflow** for new features:
+
+### RED → GREEN → REFACTOR
+
+**1. RED Stage - Define Interface First**
+- Start by defining the **function signatures and types** (the interface/contract) before writing tests
+- This includes:
+  - Function/method signatures with parameters and return types
+  - Domain types (structs, interfaces)
+  - Sentinel errors (e.g., `ErrNotFound`, `ErrInvalidInput`)
+- Then write failing tests that exercise the interface
+- Tests should fail to compile or run because the implementation doesn't exist yet
+
+**2. GREEN Stage - Minimal Implementation**
+- Implement just enough code to make the tests pass
+- Don't over-engineer; focus on the specific behavior being tested
+- Resist adding features not covered by tests
+
+**3. REFACTOR Stage - Clean Up**
+- Improve code structure while keeping tests green
+- Extract common patterns, improve naming, reduce duplication
+- Run `make check` to ensure code quality
+
+### Example Flow
+
+For a new `CreateLink` function:
+1. Define `CreateRequest`, `CreateResponse`, `ErrSlugTaken` in `link/types.go`
+2. Define `func (s *Service) Create(ctx context.Context, req CreateRequest) (*CreateResponse, error)` signature
+3. Write tests in `create_test.go` that fail (implementation returns nil or placeholder)
+4. Implement `Create` to make tests pass
+5. Refactor if needed
+
 ## Environment
 
 | Variable | Default | Notes |
