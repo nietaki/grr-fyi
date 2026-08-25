@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
+	"testing"
 	"time"
 
-	"github.com/mvrahden/go-test/pkg/gotest"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	_ "modernc.org/sqlite"
 
 	"github.com/nietaki/grr-fyi/internal/click"
@@ -18,98 +20,89 @@ import (
 )
 
 type TxScopeTestSuite struct {
+	suite.Suite
 	conn    *sql.DB
 	txScope *store.TxScope
 }
 
-func (s *TxScopeTestSuite) BeforeEach(t *gotest.T) {
-	dbPath := filepath.Join(t.T().TempDir(), "test.sqlite")
+func (s *TxScopeTestSuite) SetupTest() {
+	dbPath := filepath.Join(s.T().TempDir(), "test.sqlite")
 	cfg := env.Config{DBPath: dbPath}
 
 	ctx := context.Background()
 	conn, err := db.Open(ctx, cfg)
-	gotest.NoError(t, err, "Open")
+	require.NoError(s.T(), err, "Open")
 
 	err = db.Migrate(ctx, conn)
-	gotest.NoError(t, err, "Migrate")
+	require.NoError(s.T(), err, "Migrate")
 
 	s.conn = conn
 	s.txScope = store.NewTxScope(conn)
 }
 
-func (s *TxScopeTestSuite) AfterEach(t *gotest.T) {
+func (s *TxScopeTestSuite) TearDownTest() {
 	s.conn.Close()
 }
 
-func (s *TxScopeTestSuite) TestCrossStoreTransactionCommit(t *gotest.T) {
-	t.It("commits all operations when transaction succeeds", func(it *gotest.T) {
+func (s *TxScopeTestSuite) TestCrossStoreTransactionCommit() {
+	s.T().Run("commits all operations when transaction succeeds", func(t *testing.T) {
 		ctx := context.Background()
 		linkStore := link.NewStore(s.conn)
 		clickStore := click.NewStore(s.conn)
 
-		// Create a link to work with
 		createdAt := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 		_, err := linkStore.CreateLink(ctx, "test", "https://example.com", "hash", createdAt)
-		gotest.NoError(it, err, "Create link")
+		require.NoError(t, err, "Create link")
 
-		// Perform cross-store transaction
 		err = s.txScope.RunInTx(ctx, func(tx *sql.Tx) error {
 			txLink := link.NewStore(tx)
 			txClick := click.NewStore(tx)
 
-			// Update the link
 			err := txLink.UpdateTargetURL(ctx, "test", "https://updated.com")
 			if err != nil {
 				return err
 			}
 
-			// Insert a click
 			return txClick.Insert(ctx, click.Info{
 				LinkID: 1,
 				IPHash: "test-hash",
 			})
 		})
-		gotest.NoError(it, err, "Cross-store transaction should succeed")
+		require.NoError(t, err, "Cross-store transaction should succeed")
 
-		// Verify both operations persisted
 		updatedLink, err := linkStore.GetBySlug(ctx, "test")
-		gotest.NoError(it, err, "Get updated link")
-		gotest.Equal(it, "https://updated.com", updatedLink.TargetURL)
+		require.NoError(t, err, "Get updated link")
+		require.Equal(t, "https://updated.com", updatedLink.TargetURL)
 
 		count, err := clickStore.Count(ctx, 1)
-		gotest.NoError(it, err, "Count clicks")
-		gotest.Equal(it, int64(1), count)
+		require.NoError(t, err, "Count clicks")
+		require.Equal(t, int64(1), count)
 	})
 }
 
-func (s *TxScopeTestSuite) TestCrossStoreTransactionRollback(t *gotest.T) {
-	t.It("rolls back all operations when transaction fails", func(it *gotest.T) {
+func (s *TxScopeTestSuite) TestCrossStoreTransactionRollback() {
+	s.T().Run("rolls back all operations when transaction fails", func(t *testing.T) {
 		ctx := context.Background()
 		linkStore := link.NewStore(s.conn)
 		clickStore := click.NewStore(s.conn)
 
-		// Create a link to work with
 		createdAt := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 		_, err := linkStore.CreateLink(ctx, "rollback-test", "https://example.com", "hash", createdAt)
-		gotest.NoError(it, err, "Create link")
+		require.NoError(t, err, "Create link")
 
-		// Get original state
 		originalLink, err := linkStore.GetBySlug(ctx, "rollback-test")
-		gotest.NoError(it, err, "Get original link")
+		require.NoError(t, err, "Get original link")
 		originalURL := originalLink.TargetURL
 
-		// Perform transaction that fails partway through
 		err = s.txScope.RunInTx(ctx, func(tx *sql.Tx) error {
 			txLink := link.NewStore(tx)
 			txClick := click.NewStore(tx)
 
-			// Update the link
 			err := txLink.UpdateTargetURL(ctx, "rollback-test", "https://should-rollback.com")
 			if err != nil {
 				return err
 			}
 
-			// Insert a click
 			err = txClick.Insert(ctx, click.Info{
 				LinkID: 1,
 				IPHash: "test-hash",
@@ -118,18 +111,20 @@ func (s *TxScopeTestSuite) TestCrossStoreTransactionRollback(t *gotest.T) {
 				return err
 			}
 
-			// Simulate a failure
 			return fmt.Errorf("simulated failure")
 		})
-		gotest.Error(it, err, "Transaction should fail")
+		require.Error(t, err, "Transaction should fail")
 
-		// Verify both operations were rolled back
 		rolledBackLink, err := linkStore.GetBySlug(ctx, "rollback-test")
-		gotest.NoError(it, err, "Get link after rollback")
-		gotest.Equal(it, originalURL, rolledBackLink.TargetURL, "URL should be unchanged")
+		require.NoError(t, err, "Get link after rollback")
+		require.Equal(t, originalURL, rolledBackLink.TargetURL, "URL should be unchanged")
 
 		count, err := clickStore.Count(ctx, 1)
-		gotest.NoError(it, err, "Count clicks after rollback")
-		gotest.Equal(it, int64(0), count, "Click should not exist")
+		require.NoError(t, err, "Count clicks after rollback")
+		require.Equal(t, int64(0), count, "Click should not exist")
 	})
+}
+
+func TestTxScopeTestSuite(t *testing.T) {
+	suite.Run(t, new(TxScopeTestSuite))
 }

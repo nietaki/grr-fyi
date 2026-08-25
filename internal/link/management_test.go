@@ -2,112 +2,119 @@ package link
 
 import (
 	"context"
+	"testing"
 	"time"
 
-	"github.com/mvrahden/go-test/pkg/gotest"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
 type ManagementTestSuite struct {
+	suite.Suite
 	service *Service
 }
 
-func (s *ManagementTestSuite) BeforeEach(t *gotest.T) {
-	s.service, _ = setupTestService(t)
+func (s *ManagementTestSuite) SetupTest() {
+	s.service, _ = setupTestService(s.T())
 }
 
-func (s *ManagementTestSuite) TestGetActiveLink(t *gotest.T) {
-	t.It("returns an active link", func(it *gotest.T) {
+func (s *ManagementTestSuite) TestGetActiveLink() {
+	s.T().Run("returns an active link", func(t *testing.T) {
 		ctx := context.Background()
 
 		_, err := s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com", CustomSlug: "test"})
-		gotest.NoError(it, err, "Create")
+		require.NoError(t, err, "Create")
 
 		link, err := s.service.Get(ctx, "test")
-		gotest.NoError(it, err, "Get")
-		gotest.NotNil(it, link)
-		gotest.Equal(it, "test", link.Slug)
-		gotest.Equal(it, (*time.Time)(nil), link.RevokedAt)
+		require.NoError(t, err, "Get")
+		require.NotNil(t, link)
+		require.Equal(t, "test", link.Slug)
+		require.Equal(t, (*time.Time)(nil), link.RevokedAt)
 	})
 }
 
-func (s *ManagementTestSuite) TestGetRevokedLink(t *gotest.T) {
-	t.It("returns a revoked link", func(it *gotest.T) {
+func (s *ManagementTestSuite) TestGetRevokedLink() {
+	s.T().Run("returns a revoked link", func(t *testing.T) {
 		ctx := context.Background()
 
 		resp, err := s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com", CustomSlug: "revoked"})
-		gotest.NoError(it, err, "Create")
+		require.NoError(t, err, "Create")
 
 		err = s.service.Revoke(ctx, "revoked", resp.ClaimKey)
-		gotest.NoError(it, err, "Revoke")
+		require.NoError(t, err, "Revoke")
 
 		link, err := s.service.Get(ctx, "revoked")
-		gotest.NoError(it, err, "Get")
-		gotest.NotNil(it, link)
-		gotest.NotNil(it, link.RevokedAt)
+		require.NoError(t, err, "Get")
+		require.NotNil(t, link)
+		require.NotNil(t, link.RevokedAt)
 	})
 }
 
-func (s *ManagementTestSuite) TestGetNotFound(t *gotest.T) {
-	t.It("returns ErrNotFound when slug does not exist", func(it *gotest.T) {
+func (s *ManagementTestSuite) TestGetNotFound() {
+	s.T().Run("returns ErrNotFound when slug does not exist", func(t *testing.T) {
 		ctx := context.Background()
 
 		_, err := s.service.Get(ctx, "nonexistent")
-		gotest.ErrorIs(it, err, ErrNotFound)
+		require.ErrorIs(t, err, ErrNotFound)
 	})
 }
 
-func (s *ManagementTestSuite) TestUpdateWithValidClaim(t *gotest.T) {
-	t.It("updates the target URL with valid claim key", func(it *gotest.T) {
+func (s *ManagementTestSuite) TestUpdateWithValidClaim() {
+	s.T().Run("updates the target URL with valid claim key", func(t *testing.T) {
 		ctx := context.Background()
 
 		resp, err := s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com", CustomSlug: "test"})
-		gotest.NoError(it, err, "Create")
+		require.NoError(t, err, "Create")
 
 		err = s.service.Update(ctx, "test", resp.ClaimKey, "https://newexample.com")
-		gotest.NoError(it, err, "Update")
+		require.NoError(t, err, "Update")
 
 		link, err := s.service.Get(ctx, "test")
-		gotest.NoError(it, err, "Get")
-		gotest.Equal(it, "https://newexample.com", link.TargetURL)
+		require.NoError(t, err, "Get")
+		require.Equal(t, "https://newexample.com", link.TargetURL)
 	})
 }
 
-func (s *ManagementTestSuite) TestUpdateWithInvalidClaim(t *gotest.T) {
-	t.It("returns ErrInvalidClaim with wrong claim key", func(it *gotest.T) {
+func (s *ManagementTestSuite) TestUpdateWithInvalidClaim() {
+	s.T().Run("returns ErrInvalidClaim with wrong claim key", func(t *testing.T) {
 		ctx := context.Background()
 
 		_, err := s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com", CustomSlug: "test"})
-		gotest.NoError(it, err, "Create")
+		require.NoError(t, err, "Create")
 
 		err = s.service.Update(ctx, "test", "wrongkey", "https://newexample.com")
-		gotest.ErrorIs(it, err, ErrInvalidClaim)
+		require.ErrorIs(t, err, ErrInvalidClaim)
 	})
 }
 
-func (s *ManagementTestSuite) TestRevokeWithValidClaim(t *gotest.T) {
-	t.It("revokes the link with valid claim key", func(it *gotest.T) {
+func (s *ManagementTestSuite) TestRevokeWithValidClaim() {
+	s.T().Run("revokes the link with valid claim key", func(t *testing.T) {
 		ctx := context.Background()
 
 		resp, err := s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com", CustomSlug: "test"})
-		gotest.NoError(it, err, "Create")
+		require.NoError(t, err, "Create")
 
 		err = s.service.Revoke(ctx, "test", resp.ClaimKey)
-		gotest.NoError(it, err, "Revoke")
+		require.NoError(t, err, "Revoke")
 
 		link, err := s.service.Get(ctx, "test")
-		gotest.NoError(it, err, "Get")
-		gotest.NotNil(it, link.RevokedAt)
+		require.NoError(t, err, "Get")
+		require.NotNil(t, link.RevokedAt)
 	})
 }
 
-func (s *ManagementTestSuite) TestRevokeWithInvalidClaim(t *gotest.T) {
-	t.It("returns ErrInvalidClaim with wrong claim key", func(it *gotest.T) {
+func (s *ManagementTestSuite) TestRevokeWithInvalidClaim() {
+	s.T().Run("returns ErrInvalidClaim with wrong claim key", func(t *testing.T) {
 		ctx := context.Background()
 
 		_, err := s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com", CustomSlug: "test"})
-		gotest.NoError(it, err, "Create")
+		require.NoError(t, err, "Create")
 
 		err = s.service.Revoke(ctx, "test", "wrongkey")
-		gotest.ErrorIs(it, err, ErrInvalidClaim)
+		require.ErrorIs(t, err, ErrInvalidClaim)
 	})
+}
+
+func TestManagementTestSuite(t *testing.T) {
+	suite.Run(t, new(ManagementTestSuite))
 }

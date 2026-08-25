@@ -3,21 +3,24 @@ package link
 import (
 	"context"
 	"database/sql"
+	"testing"
 
-	"github.com/mvrahden/go-test/pkg/gotest"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
 type CreateTestSuite struct {
+	suite.Suite
 	service *Service
 	conn    *sql.DB
 }
 
-func (s *CreateTestSuite) BeforeEach(t *gotest.T) {
-	s.service, s.conn = setupTestService(t)
+func (s *CreateTestSuite) SetupTest() {
+	s.service, s.conn = setupTestService(s.T())
 }
 
-func (s *CreateTestSuite) TestCreateWithCustomSlug(t *gotest.T) {
-	t.It("creates a link with the specified custom slug", func(it *gotest.T) {
+func (s *CreateTestSuite) TestCreateWithCustomSlug() {
+	s.T().Run("creates a link with the specified custom slug", func(t *testing.T) {
 		ctx := context.Background()
 
 		req := CreateRequest{
@@ -26,16 +29,16 @@ func (s *CreateTestSuite) TestCreateWithCustomSlug(t *gotest.T) {
 		}
 
 		resp, err := s.service.Create(ctx, req)
-		gotest.NoError(it, err, "Create")
-		gotest.NotNil(it, resp)
-		gotest.Equal(it, "mylink", resp.Link.Slug)
-		gotest.Equal(it, "https://example.com", resp.Link.TargetURL)
-		gotest.NotEqual(it, "", resp.ClaimKey)
+		require.NoError(t, err, "Create")
+		require.NotNil(t, resp)
+		require.Equal(t, "mylink", resp.Link.Slug)
+		require.Equal(t, "https://example.com", resp.Link.TargetURL)
+		require.NotEqual(t, "", resp.ClaimKey)
 	})
 }
 
-func (s *CreateTestSuite) TestCreateWithAutoSlug(t *gotest.T) {
-	t.It("creates a link with an auto-generated slug", func(it *gotest.T) {
+func (s *CreateTestSuite) TestCreateWithAutoSlug() {
+	s.T().Run("creates a link with an auto-generated slug", func(t *testing.T) {
 		ctx := context.Background()
 
 		req := CreateRequest{
@@ -43,82 +46,86 @@ func (s *CreateTestSuite) TestCreateWithAutoSlug(t *gotest.T) {
 		}
 
 		resp, err := s.service.Create(ctx, req)
-		gotest.NoError(it, err, "Create")
-		gotest.NotNil(it, resp)
-		gotest.NotEqual(it, "", resp.Link.Slug)
-		gotest.Equal(it, "https://example.com", resp.Link.TargetURL)
+		require.NoError(t, err, "Create")
+		require.NotNil(t, resp)
+		require.NotEqual(t, "", resp.Link.Slug)
+		require.Equal(t, "https://example.com", resp.Link.TargetURL)
 	})
 }
 
-func (s *CreateTestSuite) TestCreateAutoSlugIsSequential(t *gotest.T) {
-	t.It("generates sequential slugs for auto-generated links", func(it *gotest.T) {
+func (s *CreateTestSuite) TestCreateAutoSlugIsSequential() {
+	s.T().Run("generates sequential slugs for auto-generated links", func(t *testing.T) {
 		ctx := context.Background()
 
 		resp1, err := s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com/1"})
-		gotest.NoError(it, err, "Create 1")
+		require.NoError(t, err, "Create 1")
 
 		resp2, err := s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com/2"})
-		gotest.NoError(it, err, "Create 2")
+		require.NoError(t, err, "Create 2")
 
-		gotest.Equal(it, EncodeBase62(0), resp1.Link.Slug)
-		gotest.Equal(it, EncodeBase62(1), resp2.Link.Slug)
+		require.Equal(t, EncodeBase62(0), resp1.Link.Slug)
+		require.Equal(t, EncodeBase62(1), resp2.Link.Slug)
 	})
 }
 
-func (s *CreateTestSuite) TestCreateCustomSlugCollision(t *gotest.T) {
-	t.It("returns ErrSlugTaken when custom slug is already used", func(it *gotest.T) {
+func (s *CreateTestSuite) TestCreateCustomSlugCollision() {
+	s.T().Run("returns ErrSlugTaken when custom slug is already used", func(t *testing.T) {
 		ctx := context.Background()
 
 		_, err := s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com/1", CustomSlug: "taken"})
-		gotest.NoError(it, err, "Create 1")
+		require.NoError(t, err, "Create 1")
 
 		_, err = s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com/2", CustomSlug: "taken"})
-		gotest.ErrorIs(it, err, ErrSlugTaken)
+		require.ErrorIs(t, err, ErrSlugTaken)
 	})
 }
 
-func (s *CreateTestSuite) TestCreateClaimKeyIsHashed(t *gotest.T) {
-	t.It("stores hashed claim key, returns plaintext", func(it *gotest.T) {
+func (s *CreateTestSuite) TestCreateClaimKeyIsHashed() {
+	s.T().Run("stores hashed claim key, returns plaintext", func(t *testing.T) {
 		ctx := context.Background()
 
 		resp, err := s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com"})
-		gotest.NoError(it, err, "Create")
+		require.NoError(t, err, "Create")
 
 		var storedHash string
 		err = s.conn.QueryRowContext(ctx,
 			"SELECT claim_key_hash FROM links WHERE slug = ?", resp.Link.Slug).Scan(&storedHash)
-		gotest.NoError(it, err, "query hash")
+		require.NoError(t, err, "query hash")
 
-		gotest.NotEqual(it, resp.ClaimKey, storedHash)
-		gotest.NotEqual(it, "", storedHash)
+		require.NotEqual(t, resp.ClaimKey, storedHash)
+		require.NotEqual(t, "", storedHash)
 	})
 }
 
-func (s *CreateTestSuite) TestCreateReturnsCreatedAt(t *gotest.T) {
-	t.It("returns the created timestamp", func(it *gotest.T) {
+func (s *CreateTestSuite) TestCreateReturnsCreatedAt() {
+	s.T().Run("returns the created timestamp", func(t *testing.T) {
 		ctx := context.Background()
 
 		resp, err := s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com"})
-		gotest.NoError(it, err, "Create")
+		require.NoError(t, err, "Create")
 
-		gotest.False(it, resp.Link.CreatedAt.IsZero())
+		require.False(t, resp.Link.CreatedAt.IsZero())
 	})
 }
 
-func (s *CreateTestSuite) TestAutoSlugSkipsCustomSlugCollision(t *gotest.T) {
-	t.It("skips to next slug when auto-slug collides with custom slug", func(it *gotest.T) {
+func (s *CreateTestSuite) TestAutoSlugSkipsCustomSlugCollision() {
+	s.T().Run("skips to next slug when auto-slug collides with custom slug", func(t *testing.T) {
 		ctx := context.Background()
 
 		_, err := s.service.Create(ctx, CreateRequest{
 			TargetURL:  "https://example.com/custom",
 			CustomSlug: EncodeBase62(0),
 		})
-		gotest.NoError(it, err, "Create custom")
+		require.NoError(t, err, "Create custom")
 
 		resp, err := s.service.Create(ctx, CreateRequest{
 			TargetURL: "https://example.com/auto",
 		})
-		gotest.NoError(it, err, "Create auto")
-		gotest.Equal(it, EncodeBase62(1), resp.Link.Slug)
+		require.NoError(t, err, "Create auto")
+		require.Equal(t, EncodeBase62(1), resp.Link.Slug)
 	})
+}
+
+func TestCreateTestSuite(t *testing.T) {
+	suite.Run(t, new(CreateTestSuite))
 }

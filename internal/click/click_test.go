@@ -3,9 +3,11 @@ package click
 import (
 	"context"
 	"path/filepath"
+	"testing"
 	"time"
 
-	"github.com/mvrahden/go-test/pkg/gotest"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	_ "modernc.org/sqlite"
 
 	"github.com/nietaki/grr-fyi/internal/db"
@@ -15,39 +17,40 @@ import (
 )
 
 type ClickTestSuite struct {
+	suite.Suite
 	linkService  *link.Service
 	clickService *Service
 	dbPath       string
 }
 
-func (s *ClickTestSuite) BeforeEach(t *gotest.T) {
-	s.dbPath = filepath.Join(t.T().TempDir(), "test.sqlite")
+func (s *ClickTestSuite) SetupTest() {
+	s.dbPath = filepath.Join(s.T().TempDir(), "test.sqlite")
 	cfg := env.Config{DBPath: s.dbPath}
 
 	ctx := context.Background()
 	conn, err := db.Open(ctx, cfg)
-	gotest.NoError(t, err, "Open")
+	require.NoError(s.T(), err, "Open")
 
 	err = db.Migrate(ctx, conn)
-	gotest.NoError(t, err, "Migrate")
+	require.NoError(s.T(), err, "Migrate")
 
 	s.linkService = link.NewService(link.NewStore(conn), store.NewTxScope(conn))
 	s.clickService = NewService(NewStore(conn), 100)
 }
 
-func (s *ClickTestSuite) AfterEach(t *gotest.T) {
+func (s *ClickTestSuite) TearDownTest() {
 	s.clickService.Close()
 }
 
-func (s *ClickTestSuite) TestRecordClick(t *gotest.T) {
-	t.It("records a click asynchronously", func(it *gotest.T) {
+func (s *ClickTestSuite) TestRecordClick() {
+	s.T().Run("records a click asynchronously", func(t *testing.T) {
 		ctx := context.Background()
 
 		_, err := s.linkService.Create(ctx, link.CreateRequest{TargetURL: "https://example.com", CustomSlug: "test"})
-		gotest.NoError(it, err, "Create")
+		require.NoError(t, err, "Create")
 
 		linkObj, err := s.linkService.Get(ctx, "test")
-		gotest.NoError(it, err, "Get")
+		require.NoError(t, err, "Get")
 
 		info := Info{
 			LinkID:   linkObj.ID,
@@ -57,25 +60,25 @@ func (s *ClickTestSuite) TestRecordClick(t *gotest.T) {
 		}
 
 		err = s.clickService.Record(ctx, info)
-		gotest.NoError(it, err, "Record")
+		require.NoError(t, err, "Record")
 
 		time.Sleep(100 * time.Millisecond)
 
 		count, err := s.clickService.Count(ctx, linkObj.ID)
-		gotest.NoError(it, err, "Count")
-		gotest.Equal(it, int64(1), count)
+		require.NoError(t, err, "Count")
+		require.Equal(t, int64(1), count)
 	})
 }
 
-func (s *ClickTestSuite) TestRecordMultipleClicks(t *gotest.T) {
-	t.It("records multiple clicks", func(it *gotest.T) {
+func (s *ClickTestSuite) TestRecordMultipleClicks() {
+	s.T().Run("records multiple clicks", func(t *testing.T) {
 		ctx := context.Background()
 
 		_, err := s.linkService.Create(ctx, link.CreateRequest{TargetURL: "https://example.com", CustomSlug: "test"})
-		gotest.NoError(it, err, "Create")
+		require.NoError(t, err, "Create")
 
 		linkObj, err := s.linkService.Get(ctx, "test")
-		gotest.NoError(it, err, "Get")
+		require.NoError(t, err, "Get")
 
 		for i := 0; i < 5; i++ {
 			info := Info{
@@ -83,29 +86,33 @@ func (s *ClickTestSuite) TestRecordMultipleClicks(t *gotest.T) {
 				IPHash: "hash" + string(rune('0'+i)),
 			}
 			err = s.clickService.Record(ctx, info)
-			gotest.NoError(it, err, "Record %d", i)
+			require.NoError(t, err, "Record %d", i)
 		}
 
 		time.Sleep(200 * time.Millisecond)
 
 		count, err := s.clickService.Count(ctx, linkObj.ID)
-		gotest.NoError(it, err, "Count")
-		gotest.Equal(it, int64(5), count)
+		require.NoError(t, err, "Count")
+		require.Equal(t, int64(5), count)
 	})
 }
 
-func (s *ClickTestSuite) TestCountZeroForNewLink(t *gotest.T) {
-	t.It("returns 0 for a link with no clicks", func(it *gotest.T) {
+func (s *ClickTestSuite) TestCountZeroForNewLink() {
+	s.T().Run("returns 0 for a link with no clicks", func(t *testing.T) {
 		ctx := context.Background()
 
 		_, err := s.linkService.Create(ctx, link.CreateRequest{TargetURL: "https://example.com", CustomSlug: "test"})
-		gotest.NoError(it, err, "Create")
+		require.NoError(t, err, "Create")
 
 		linkObj, err := s.linkService.Get(ctx, "test")
-		gotest.NoError(it, err, "Get")
+		require.NoError(t, err, "Get")
 
 		count, err := s.clickService.Count(ctx, linkObj.ID)
-		gotest.NoError(it, err, "Count")
-		gotest.Equal(it, int64(0), count)
+		require.NoError(t, err, "Count")
+		require.Equal(t, int64(0), count)
 	})
+}
+
+func TestClickTestSuite(t *testing.T) {
+	suite.Run(t, new(ClickTestSuite))
 }

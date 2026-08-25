@@ -2,28 +2,36 @@ package logging
 
 import (
 	"log/slog"
+	"testing"
 
-	"github.com/mvrahden/go-test/pkg/gotest"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-type LoggingTestSuite struct{}
+type LoggingTestSuite struct {
+	suite.Suite
+}
 
-func (s *LoggingTestSuite) TestGetHandlerOptions(t *gotest.T) {
-	t.It("returns Info level when not verbose", func(it *gotest.T) {
+func (s *LoggingTestSuite) TestGetHandlerOptions() {
+	s.T().Run("returns Info level when not verbose", func(t *testing.T) {
 		opts := getHandlerOptions(false)
-		gotest.True(it, opts.Level.Level() == slog.LevelInfo)
+		require.True(t, opts.Level.Level() == slog.LevelInfo)
 	})
 
-	t.It("returns Debug level when verbose", func(it *gotest.T) {
+	s.T().Run("returns Debug level when verbose", func(t *testing.T) {
 		opts := getHandlerOptions(true)
-		gotest.True(it, opts.Level.Level() == slog.LevelDebug)
+		require.True(t, opts.Level.Level() == slog.LevelDebug)
 	})
 }
 
-func (s *LoggingTestSuite) TestSetAndGetLogger(t *gotest.T) {
-	t.It("returns the logger that was set", func(it *gotest.T) {
+func (s *LoggingTestSuite) TestSetAndGetLogger() {
+	s.T().Run("returns the logger that was set", func(t *testing.T) {
 		logger := slog.Default()
 		SetLogger(logger)
-		gotest.Equal(it, logger, GetLogger())
+		require.Equal(t, logger, GetLogger())
 	})
+}
+
+func TestLoggingTestSuite(t *testing.T) {
+	suite.Run(t, new(LoggingTestSuite))
 }

@@ -1,43 +1,52 @@
 package env
 
 import (
-	"github.com/mvrahden/go-test/pkg/gotest"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-type ConfigTestSuite struct{}
+type ConfigTestSuite struct {
+	suite.Suite
+}
 
-func (s *ConfigTestSuite) TestDefaultValues(t *gotest.T) {
-	t.It("loads default ServerPort", func(it *gotest.T) {
+func (s *ConfigTestSuite) TestDefaultValues() {
+	s.T().Run("loads default ServerPort", func(t *testing.T) {
 		cfg := Load()
-		gotest.Equal(it, "30666", cfg.ServerPort)
+		require.Equal(t, "30666", cfg.ServerPort)
 	})
 }
 
-func (s *ConfigTestSuite) TestRandomFailure(t *gotest.T) {
-	t.Skipf("skipping deliberately failing test")
+func (s *ConfigTestSuite) TestRandomFailure() {
+	s.T().Skip("skipping deliberately failing test")
 }
 
-func (s *ConfigTestSuite) TestSettingCustomPort(t *gotest.T) {
-	t.It("loads custom port from environment", func(it *gotest.T) {
-		it.Setenv("SERVER_PORT", "8080")
+func (s *ConfigTestSuite) TestSettingCustomPort() {
+	s.T().Run("loads custom port from environment", func(t *testing.T) {
+		t.Setenv("SERVER_PORT", "8080")
 		cfg := Load()
-		gotest.Equal(it, "8080", cfg.ServerPort)
+		require.Equal(t, "8080", cfg.ServerPort)
 	})
 }
 
-func (s *ConfigTestSuite) TestInvalidPortFormat(t *gotest.T) {
-	t.It("accepts invalid port format from environment", func(it *gotest.T) {
-		it.Setenv("SERVER_PORT", "invalid_port_with_spaces")
+func (s *ConfigTestSuite) TestInvalidPortFormat() {
+	s.T().Run("accepts invalid port format from environment", func(t *testing.T) {
+		t.Setenv("SERVER_PORT", "invalid_port_with_spaces")
 		cfg := Load()
-		gotest.Equal(it, "invalid_port_with_spaces", cfg.ServerPort)
+		require.Equal(t, "invalid_port_with_spaces", cfg.ServerPort)
 	})
 }
 
-func (s *ConfigTestSuite) TestGet(t *gotest.T) {
-	t.It("returns the loaded config", func(it *gotest.T) {
-		it.Setenv("SERVER_PORT", "9999")
+func (s *ConfigTestSuite) TestGet() {
+	s.T().Run("returns the loaded config", func(t *testing.T) {
+		t.Setenv("SERVER_PORT", "9999")
 		Load()
 		cfg := Get()
-		gotest.Equal(it, "9999", cfg.ServerPort)
+		require.Equal(t, "9999", cfg.ServerPort)
 	})
+}
+
+func TestConfigTestSuite(t *testing.T) {
+	suite.Run(t, new(ConfigTestSuite))
 }

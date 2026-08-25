@@ -1,23 +1,30 @@
 package link
 
 import (
-	"github.com/mvrahden/go-test/pkg/gotest"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-type ClaimKeyTestSuite struct{}
+type ClaimKeyTestSuite struct {
+	suite.Suite
+}
 
-func (s *ClaimKeyTestSuite) BeforeEach(t *gotest.T) {}
-
-func (s *ClaimKeyTestSuite) TestGenerateClaimKey(t *gotest.T) {
-	t.It("generates a non-empty claim key", func(it *gotest.T) {
+func (s *ClaimKeyTestSuite) TestGenerateClaimKey() {
+	s.T().Run("generates a non-empty claim key", func(t *testing.T) {
 		key := generateClaimKey()
-		gotest.NotEqual(it, "", key)
+		require.NotEqual(t, "", key)
 	})
 
-	t.It("generates different keys each time", func(it *gotest.T) {
+	s.T().Run("generates different keys each time", func(t *testing.T) {
 		key1 := generateClaimKey()
 		key2 := generateClaimKey()
 
-		gotest.NotEqual(it, key1, key2)
+		require.NotEqual(t, key1, key2)
 	})
+}
+
+func TestClaimKeyTestSuite(t *testing.T) {
+	suite.Run(t, new(ClaimKeyTestSuite))
 }

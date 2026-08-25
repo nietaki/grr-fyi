@@ -2,38 +2,45 @@ package link
 
 import (
 	"context"
+	"testing"
 
-	"github.com/mvrahden/go-test/pkg/gotest"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
 type ResolveTestSuite struct {
+	suite.Suite
 	service *Service
 }
 
-func (s *ResolveTestSuite) BeforeEach(t *gotest.T) {
-	s.service, _ = setupTestService(t)
+func (s *ResolveTestSuite) SetupTest() {
+	s.service, _ = setupTestService(s.T())
 }
 
-func (s *ResolveTestSuite) TestResolveActiveLink(t *gotest.T) {
-	t.It("returns the link when it exists and is active", func(it *gotest.T) {
+func (s *ResolveTestSuite) TestResolveActiveLink() {
+	s.T().Run("returns the link when it exists and is active", func(t *testing.T) {
 		ctx := context.Background()
 
 		_, err := s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com", CustomSlug: "test"})
-		gotest.NoError(it, err, "Create")
+		require.NoError(t, err, "Create")
 
 		link, err := s.service.Resolve(ctx, "test")
-		gotest.NoError(it, err, "Resolve")
-		gotest.NotNil(it, link)
-		gotest.Equal(it, "test", link.Slug)
-		gotest.Equal(it, "https://example.com", link.TargetURL)
+		require.NoError(t, err, "Resolve")
+		require.NotNil(t, link)
+		require.Equal(t, "test", link.Slug)
+		require.Equal(t, "https://example.com", link.TargetURL)
 	})
 }
 
-func (s *ResolveTestSuite) TestResolveNotFound(t *gotest.T) {
-	t.It("returns ErrNotFound when slug does not exist", func(it *gotest.T) {
+func (s *ResolveTestSuite) TestResolveNotFound() {
+	s.T().Run("returns ErrNotFound when slug does not exist", func(t *testing.T) {
 		ctx := context.Background()
 
 		_, err := s.service.Resolve(ctx, "nonexistent")
-		gotest.ErrorIs(it, err, ErrNotFound)
+		require.ErrorIs(t, err, ErrNotFound)
 	})
+}
+
+func TestResolveTestSuite(t *testing.T) {
+	suite.Run(t, new(ResolveTestSuite))
 }

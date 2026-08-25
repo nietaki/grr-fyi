@@ -4,7 +4,7 @@
 
 ```bash
 make check        # goimports + coverage + vet + staticcheck (run before committing)
-make test         # gotest ./...
+make test         # go test ./...
 make coverage     # tests with coverage report
 make run          # build and run (server on :30666)
 make build        # go build
@@ -28,9 +28,9 @@ make build        # go build
 
 ## Testing
 
-- **Framework**: Use `github.com/mvrahden/go-test/pkg/gotest` for all tests. Write tests for any new functionality that's not very difficult to test.
-- **Suite pattern**: Use `type XxxTestSuite struct{}` with `BeforeEach(t *gotest.T)` for setup and `TestXxx(t *gotest.T)` methods with `t.It("description", func(it *gotest.T) { ... })` subtests.
-- **Assertions**: Use `gotest.Equal`, `gotest.NoError`, `gotest.True`, etc. instead of manual `if err != nil { t.Fatalf(...) }` patterns.
+- **Framework**: Use `github.com/stretchr/testify` (with `testify/suite` and `testify/require`) for all tests. Write tests for any new functionality that's not very difficult to test.
+- **Suite pattern**: Use `type XxxTestSuite struct { suite.Suite }` with `SetupTest()` for setup, `TearDownTest()` for teardown, and `TestXxx()` methods with `s.T().Run("description", func(t *testing.T) { ... })` subtests. Add a `func TestXxxSuite(t *testing.T) { suite.Run(t, new(XxxTestSuite)) }` runner.
+- **Assertions**: Use `require.NoError`, `require.Equal`, `require.True`, etc. (from `testify/require`) instead of manual `if err != nil { t.Fatalf(...) }` patterns. Use `require` (not `assert`) so tests stop on failure.
 
 ## Feature Implementation Approach
 
