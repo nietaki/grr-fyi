@@ -11,6 +11,7 @@ require (
 	github.com/labstack/echo/v5 v5.0.4
 	github.com/mvrahden/go-test v1.27.0
 	github.com/pressly/goose/v3 v3.26.0
+	github.com/urfave/cli/v3 v3.11.0
 	modernc.org/sqlite v1.44.3
 )
 
