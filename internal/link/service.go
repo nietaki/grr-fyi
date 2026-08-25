@@ -104,6 +104,12 @@ func (s *Service) Get(ctx context.Context, slug string) (*Link, error) {
 	return s.store.GetBySlug(ctx, slug)
 }
 
+// SlugExists checks if a slug is already in use in the database.
+// Note: This returns true even for revoked links — revoked slugs cannot be re-used.
+func (s *Service) SlugExists(ctx context.Context, slug string) (bool, error) {
+	return s.store.SlugExists(ctx, slug)
+}
+
 func (s *Service) Update(ctx context.Context, slug, claimKey, newTarget string) error {
 	link, err := s.Get(ctx, slug)
 	if err != nil {

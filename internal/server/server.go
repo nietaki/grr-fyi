@@ -8,7 +8,9 @@ import (
 
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
+	"github.com/nietaki/grr-fyi/internal/click"
 	"github.com/nietaki/grr-fyi/internal/env"
+	"github.com/nietaki/grr-fyi/internal/link"
 	"github.com/nietaki/grr-fyi/internal/site"
 )
 
@@ -17,9 +19,7 @@ type Template struct {
 	templates *template.Template
 }
 
-func NewTemplate(cfg env.Config) *Template {
-	siteConf := site.Read(cfg)
-
+func NewTemplate(siteConf site.SiteConfig) *Template {
 	funcs := template.FuncMap{
 		"site": func(s string) string { return siteConf.Get(s) },
 	}
@@ -38,14 +38,34 @@ func (t *Template) Render(c *echo.Context, w io.Writer, name string, data any) e
 	return tmpl.ExecuteTemplate(w, "base.html", data)
 }
 
-func Start(ctx context.Context, cfg env.Config) {
+func Start(ctx context.Context, cfg env.Config, linkSvc *link.Service, clickSvc *click.Service) {
 	e := echo.New()
-	e.Renderer = NewTemplate(cfg)
+
+	// Read site config once and share between template and handler
+	siteConf := site.Read(cfg)
+	e.Renderer = NewTemplate(siteConf)
 
 	e.Use(middleware.Recover())
 	e.Use(middleware.ContextTimeout(time.Second * 30))
 
 	e.Static("/", "static")
+
+	// Create handler with dependencies
+	handler := NewHandler(linkSvc, clickSvc, siteConf.Get("url"))
+
+	// API routes with CORS
+	api := e.Group("/_")
+	api.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{"POST", "OPTIONS"},
+		AllowHeaders: []string{"Content-Type"},
+	}))
+
+	api.POST("/create_link", handler.CreateLink)
+	api.POST("/slug_availability", handler.SlugAvailability)
+
+	// Redirect route - must be last to avoid catching other routes
+	e.GET("/:slug", handler.Redirect)
 
 	e.GET("/", func(c *echo.Context) error {
 		return c.Render(200, "index.html", map[string]any{})

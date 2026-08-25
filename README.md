@@ -85,6 +85,139 @@ Clicks are recorded asynchronously to avoid adding latency to redirects:
 - `Count(ctx, linkID) (int64, error)` - Aggregate count from clicks table
 - `Close()` - Graceful shutdown, flush remaining clicks
 
+## JSON API
+
+The URL shortener exposes a JSON API for creating and resolving shortened links. All POST endpoints return JSON and support CORS.
+
+### Endpoints
+
+#### `GET /:slug` — Redirect to target URL
+
+Resolves a shortened link and redirects to the target URL. Records a click asynchronously.
+
+**Response:**
+- `302 Found` — Redirect to target URL (active link)
+- `404 Not Found` — Slug does not exist
+- `410 Gone` — Link has been revoked
+
+**Example:**
+```bash
+curl -L https://grr.fyi/abc123
+# Redirects to the target URL
+```
+
+---
+
+#### `POST /_/create_link` — Create a new shortened link
+
+Creates a new shortened URL. You can optionally specify a custom slug.
+
+**Request:**
+```json
+{
+  "target_url": "https://example.com/very/long/url",
+  "custom_slug": "mylink"  // optional, omit for auto-generated slug
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "slug": "mylink",
+  "short_url": "https://grr.fyi/mylink",
+  "claim_key": "aB3xY9kL2mN"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` — Malformed JSON
+- `409 Conflict` — Custom slug already taken
+- `422 Unprocessable Entity` — Validation error (invalid URL or slug format)
+
+**Validation Rules:**
+- `target_url` must be a valid HTTP or HTTPS URL (rejects `javascript:`, `ftp:`, etc.)
+- `custom_slug` (if provided) must be 1-50 characters, alphanumeric + hyphens + underscores, cannot start with `_`
+
+**Example:**
+```bash
+curl -X POST https://grr.fyi/_/create_link \
+  -H "Content-Type: application/json" \
+  -d '{"target_url": "https://example.com", "custom_slug": "demo"}'
+```
+
+**Important:** The `claim_key` is shown only once. Store it securely — it's required to edit or revoke the link. Lost claim key = lost link.
+
+---
+
+#### `POST /_/slug_availability` — Check if a custom slug is available
+
+Checks whether a custom slug is available before attempting to create a link.
+
+**Request:**
+```json
+{
+  "slug": "mylink"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "available": true
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` — Malformed JSON
+- `422 Unprocessable Entity` — Invalid slug format
+
+**Example:**
+```bash
+curl -X POST https://grr.fyi/_/slug_availability \
+  -H "Content-Type: application/json" \
+  -d '{"slug": "demo"}'
+```
+
+**Note:** A slug is considered "taken" if it exists in the database, even if the link has been revoked. Revoked slugs cannot be re-used.
+
+---
+
+### CORS
+
+All POST endpoints (`/_/create_link`, `/_/slug_availability`) support CORS with `Access-Control-Allow-Origin: *`. This allows the API to be called from any domain.
+
+**Preflight request:**
+```bash
+curl -X OPTIONS https://grr.fyi/_/create_link \
+  -H "Origin: https://example.com" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: Content-Type"
+```
+
+### Using with Alpine.js
+
+The API is designed to work seamlessly with [Alpine Ajax](https://alpine-ajax.js.org/):
+
+```html
+<form ax-post="/_/create_link" ax-target="#result">
+  <input type="url" name="target_url" required>
+  <input type="text" name="custom_slug">
+  <button type="submit">Shorten</button>
+</form>
+
+<div id="result"></div>
+```
+
+### Error Format
+
+All errors follow a consistent JSON format:
+
+```json
+{
+  "error": "human-readable error message"
+}
+```
+
 ## SQLite persistence & Litestream replication
 
 The app stores data in a single SQLite file (`DB_PATH`, default `db/filedb.sqlite`)

@@ -11,11 +11,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nietaki/grr-fyi/internal/click"
 	"github.com/nietaki/grr-fyi/internal/db"
 	"github.com/nietaki/grr-fyi/internal/env"
+	"github.com/nietaki/grr-fyi/internal/link"
 	"github.com/nietaki/grr-fyi/internal/logging"
 	"github.com/nietaki/grr-fyi/internal/replication"
 	"github.com/nietaki/grr-fyi/internal/server"
+	internalstore "github.com/nietaki/grr-fyi/internal/store"
 	"github.com/urfave/cli/v3"
 )
 
@@ -96,7 +99,16 @@ func runServe(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("migrate database: %w", err)
 	}
 
-	server.Start(ctx, cfg)
+	// Create services
+	linkStore := link.NewStore(conn)
+	txScope := internalstore.NewTxScope(conn)
+	linkSvc := link.NewService(linkStore, txScope)
+
+	clickStore := click.NewStore(conn)
+	clickSvc := click.NewService(clickStore, 1000)
+	defer clickSvc.Close()
+
+	server.Start(ctx, cfg, linkSvc, clickSvc)
 
 	<-ctx.Done()
 	slog.Info("shutting down server...")
