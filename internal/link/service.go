@@ -70,21 +70,30 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*CreateRespons
 }
 
 func (s *Service) generateAutoSlug(ctx context.Context) (string, error) {
-	var nextValue int64
-	err := s.db.QueryRowContext(ctx, "SELECT next_value FROM slug_sequence WHERE id = 1").Scan(&nextValue)
-	if err != nil {
-		return "", err
+	for {
+		var nextValue int64
+		err := s.db.QueryRowContext(ctx, "SELECT next_value FROM slug_sequence WHERE id = 1").Scan(&nextValue)
+		if err != nil {
+			return "", err
+		}
+
+		slug := encodeBase62(nextValue)
+
+		var exists bool
+		err = s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM links WHERE slug = ?)", slug).Scan(&exists)
+		if err != nil {
+			return "", err
+		}
+
+		_, err = s.db.ExecContext(ctx, "UPDATE slug_sequence SET next_value = ? WHERE id = 1", nextValue+1)
+		if err != nil {
+			return "", err
+		}
+
+		if !exists {
+			return slug, nil
+		}
 	}
-
-	slug := encodeBase62(nextValue)
-
-	_, err = s.db.ExecContext(ctx,
-		"UPDATE slug_sequence SET next_value = ? WHERE id = 1", nextValue+1)
-	if err != nil {
-		return "", err
-	}
-
-	return slug, nil
 }
 
 func (s *Service) Resolve(ctx context.Context, slug string) (*Link, error) {

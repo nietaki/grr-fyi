@@ -102,3 +102,21 @@ func (s *CreateTestSuite) TestCreateReturnsCreatedAt(t *gotest.T) {
 		gotest.False(it, resp.Link.CreatedAt.IsZero())
 	})
 }
+
+func (s *CreateTestSuite) TestAutoSlugSkipsCustomSlugCollision(t *gotest.T) {
+	t.It("skips to next slug when auto-slug collides with custom slug", func(it *gotest.T) {
+		ctx := context.Background()
+
+		_, err := s.service.Create(ctx, CreateRequest{
+			TargetURL:  "https://example.com/custom",
+			CustomSlug: "a",
+		})
+		gotest.NoError(it, err, "Create custom")
+
+		resp, err := s.service.Create(ctx, CreateRequest{
+			TargetURL: "https://example.com/auto",
+		})
+		gotest.NoError(it, err, "Create auto")
+		gotest.Equal(it, "b", resp.Link.Slug)
+	})
+}
