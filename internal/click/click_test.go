@@ -31,7 +31,7 @@ func (s *ClickTestSuite) BeforeEach(t *gotest.T) {
 	gotest.NoError(t, err, "Migrate")
 
 	s.linkService = link.NewService(link.NewStore(conn))
-	s.clickService = NewService(conn, 100)
+	s.clickService = NewService(NewStore(conn), 100)
 }
 
 func (s *ClickTestSuite) AfterEach(t *gotest.T) {

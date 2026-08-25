@@ -2,7 +2,6 @@ package click
 
 import (
 	"context"
-	"database/sql"
 	"sync"
 	"time"
 )
@@ -15,15 +14,15 @@ type Info struct {
 }
 
 type Service struct {
-	db    *sql.DB
+	store *Store
 	queue chan Info
 	done  chan struct{}
 	wg    sync.WaitGroup
 }
 
-func NewService(db *sql.DB, bufferSize int) *Service {
+func NewService(store *Store, bufferSize int) *Service {
 	s := &Service{
-		db:    db,
+		store: store,
 		queue: make(chan Info, bufferSize),
 		done:  make(chan struct{}),
 	}
@@ -44,10 +43,7 @@ func (s *Service) Record(ctx context.Context, info Info) error {
 }
 
 func (s *Service) Count(ctx context.Context, linkID int64) (int64, error) {
-	var count int64
-	err := s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM clicks WHERE link_id = ?`, linkID).Scan(&count)
-	return count, err
+	return s.store.Count(ctx, linkID)
 }
 
 func (s *Service) Close() {
@@ -67,7 +63,5 @@ func (s *Service) insertClick(info Info) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, _ = s.db.ExecContext(ctx,
-		`INSERT INTO clicks (link_id, ip_hash, referrer, country) VALUES (?, ?, ?, ?)`,
-		info.LinkID, info.IPHash, info.Referrer, info.Country)
+	_ = s.store.Insert(ctx, info)
 }
