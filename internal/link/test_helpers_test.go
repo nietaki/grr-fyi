@@ -10,6 +10,7 @@ import (
 
 	"github.com/nietaki/grr-fyi/internal/db"
 	"github.com/nietaki/grr-fyi/internal/env"
+	"github.com/nietaki/grr-fyi/internal/store"
 )
 
 func setupTestService(t *gotest.T) (*Service, *sql.DB) {
@@ -23,6 +24,7 @@ func setupTestService(t *gotest.T) (*Service, *sql.DB) {
 	err = db.Migrate(ctx, conn)
 	gotest.NoError(t, err, "Migrate")
 
-	store := NewStore(conn)
-	return NewService(store), conn
+	linkStore := NewStore(conn)
+	txScope := store.NewTxScope(conn)
+	return NewService(linkStore, txScope), conn
 }

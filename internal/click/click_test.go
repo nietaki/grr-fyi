@@ -11,6 +11,7 @@ import (
 	"github.com/nietaki/grr-fyi/internal/db"
 	"github.com/nietaki/grr-fyi/internal/env"
 	"github.com/nietaki/grr-fyi/internal/link"
+	"github.com/nietaki/grr-fyi/internal/store"
 )
 
 type ClickTestSuite struct {
@@ -30,7 +31,7 @@ func (s *ClickTestSuite) BeforeEach(t *gotest.T) {
 	err = db.Migrate(ctx, conn)
 	gotest.NoError(t, err, "Migrate")
 
-	s.linkService = link.NewService(link.NewStore(conn))
+	s.linkService = link.NewService(link.NewStore(conn), store.NewTxScope(conn))
 	s.clickService = NewService(NewStore(conn), 100)
 }
 

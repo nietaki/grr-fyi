@@ -7,43 +7,24 @@ import (
 	"fmt"
 	"strings"
 	"time"
-)
 
-type dbtx interface {
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
-}
+	"github.com/nietaki/grr-fyi/internal/store"
+)
 
 const timeFormat = "2006-01-02 15:04:05.999999999 -0700 MST"
 
 type Store struct {
-	db   dbtx
-	conn *sql.DB
+	DB store.DBTX
 }
 
-func NewStore(conn *sql.DB) *Store {
-	return &Store{db: conn, conn: conn}
-}
-
-func (s *Store) WithTx(ctx context.Context, fn func(*Store) error) error {
-	if s.conn == nil {
-		return errors.New("store is not connected to a database")
-	}
-	tx, err := s.conn.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback()
-
-	txStore := &Store{db: tx}
-	if err := fn(txStore); err != nil {
-		return err
-	}
-	return tx.Commit()
+// NewStore creates a new Store. The db parameter can be either *sql.DB
+// for regular operations or *sql.Tx for transactional operations.
+func NewStore(db store.DBTX) *Store {
+	return &Store{DB: db}
 }
 
 func (s *Store) CreateLink(ctx context.Context, slug, targetURL, claimKeyHash string, createdAt time.Time) error {
-	_, err := s.db.ExecContext(ctx,
+	_, err := s.DB.ExecContext(ctx,
 		"INSERT INTO links (slug, target_url, claim_key_hash, created_at) VALUES (?, ?, ?, ?)",
 		slug, targetURL, claimKeyHash, createdAt)
 	if err != nil {
@@ -63,7 +44,7 @@ func (s *Store) GetBySlug(ctx context.Context, slug string) (*Link, error) {
 	var revokedAt sql.NullString
 	var createdAt string
 
-	err := s.db.QueryRowContext(ctx,
+	err := s.DB.QueryRowContext(ctx,
 		"SELECT id, slug, target_url, created_at, revoked_at, claim_key_hash FROM links WHERE slug = ?",
 		slug).Scan(&link.ID, &link.Slug, &link.TargetURL, &createdAt, &revokedAt, &link.ClaimKeyHash)
 	if err != nil {
@@ -90,7 +71,7 @@ func (s *Store) GetBySlug(ctx context.Context, slug string) (*Link, error) {
 }
 
 func (s *Store) UpdateTargetURL(ctx context.Context, slug, newTarget string) error {
-	_, err := s.db.ExecContext(ctx, "UPDATE links SET target_url = ? WHERE slug = ?", newTarget, slug)
+	_, err := s.DB.ExecContext(ctx, "UPDATE links SET target_url = ? WHERE slug = ?", newTarget, slug)
 	if err != nil {
 		return fmt.Errorf("update target url: %w", err)
 	}
@@ -98,7 +79,7 @@ func (s *Store) UpdateTargetURL(ctx context.Context, slug, newTarget string) err
 }
 
 func (s *Store) RevokeLink(ctx context.Context, slug string, revokedAt time.Time) error {
-	_, err := s.db.ExecContext(ctx, "UPDATE links SET revoked_at = ? WHERE slug = ?", revokedAt, slug)
+	_, err := s.DB.ExecContext(ctx, "UPDATE links SET revoked_at = ? WHERE slug = ?", revokedAt, slug)
 	if err != nil {
 		return fmt.Errorf("revoke link: %w", err)
 	}
@@ -107,7 +88,7 @@ func (s *Store) RevokeLink(ctx context.Context, slug string, revokedAt time.Time
 
 func (s *Store) NextSlugSequence(ctx context.Context) (int64, error) {
 	var nextValue int64
-	err := s.db.QueryRowContext(ctx, "SELECT next_value FROM slug_sequence WHERE id = 1").Scan(&nextValue)
+	err := s.DB.QueryRowContext(ctx, "SELECT next_value FROM slug_sequence WHERE id = 1").Scan(&nextValue)
 	if err != nil {
 		return 0, fmt.Errorf("get next slug sequence: %w", err)
 	}
@@ -115,7 +96,7 @@ func (s *Store) NextSlugSequence(ctx context.Context) (int64, error) {
 }
 
 func (s *Store) SetNextSlugValue(ctx context.Context, value int64) error {
-	_, err := s.db.ExecContext(ctx, "UPDATE slug_sequence SET next_value = ? WHERE id = 1", value)
+	_, err := s.DB.ExecContext(ctx, "UPDATE slug_sequence SET next_value = ? WHERE id = 1", value)
 	if err != nil {
 		return fmt.Errorf("set next slug value: %w", err)
 	}
@@ -124,7 +105,7 @@ func (s *Store) SetNextSlugValue(ctx context.Context, value int64) error {
 
 func (s *Store) SlugExists(ctx context.Context, slug string) (bool, error) {
 	var exists bool
-	err := s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM links WHERE slug = ?)", slug).Scan(&exists)
+	err := s.DB.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM links WHERE slug = ?)", slug).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("check slug exists: %w", err)
 	}

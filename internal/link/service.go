@@ -3,17 +3,20 @@ package link
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"time"
 
+	"github.com/nietaki/grr-fyi/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
-	store *Store
+	store   *Store
+	txScope *store.TxScope
 }
 
-func NewService(store *Store) *Service {
-	return &Service{store: store}
+func NewService(store *Store, txScope *store.TxScope) *Service {
+	return &Service{store: store, txScope: txScope}
 }
 
 func (s *Service) Create(ctx context.Context, req CreateRequest) (*CreateResponse, error) {
@@ -61,20 +64,22 @@ func (s *Service) generateAutoSlug(ctx context.Context) (string, error) {
 		var slug string
 		var advanced bool
 
-		err := s.store.WithTx(ctx, func(tx *Store) error {
-			nextValue, err := tx.NextSlugSequence(ctx)
+		err := s.txScope.RunInTx(ctx, func(tx *sql.Tx) error {
+			txStore := NewStore(tx)
+
+			nextValue, err := txStore.NextSlugSequence(ctx)
 			if err != nil {
 				return err
 			}
 
 			slug = encodeBase62(nextValue)
 
-			exists, err := tx.SlugExists(ctx, slug)
+			exists, err := txStore.SlugExists(ctx, slug)
 			if err != nil {
 				return err
 			}
 
-			if err := tx.SetNextSlugValue(ctx, nextValue+1); err != nil {
+			if err := txStore.SetNextSlugValue(ctx, nextValue+1); err != nil {
 				return err
 			}
 
