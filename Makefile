@@ -22,6 +22,7 @@ install:
 	go install honnef.co/go/tools/cmd/staticcheck@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	go install github.com/mvrahden/go-test/cmd/gotest@latest
+	go install golang.org/x/tools/gopls@latest
 
 .PHONY: goimports
 goimports:
