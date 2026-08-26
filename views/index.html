@@ -1,3 +1,14 @@
 {{define "content"}}
-custom content
+<form method="POST" action="/_/create_link">
+  <fieldset>
+    <label>
+      URL to shorten
+      <input type="url" name="target_url" placeholder="https://example.com/very-long-url" required>
+    </label>
+    <fieldset role="group">
+      <input type="text" name="custom_slug" placeholder="Custom slug (optional)">
+      <input type="submit" value="Shorten">
+    </fieldset>
+  </fieldset>
+</form>
 {{end}}
