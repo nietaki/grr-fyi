@@ -102,7 +102,9 @@ func (h *Handler) Redirect(c *echo.Context) error {
 
 	// Record click asynchronously
 	_ = h.clickSvc.Record(ctx, click.Info{
-		LinkID: foundLink.ID,
+		LinkID:   foundLink.ID,
+		IPHash:   hashIP(extractIP(c)),
+		Referrer: extractReferrer(c),
 	})
 
 	return c.Redirect(http.StatusFound, foundLink.TargetURL)
