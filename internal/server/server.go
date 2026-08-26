@@ -4,8 +4,6 @@ import (
 	"context"
 	"html/template"
 	"io"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/labstack/echo/v5"
@@ -40,30 +38,6 @@ func (t *Template) Render(c *echo.Context, w io.Writer, name string, data any) e
 	return tmpl.ExecuteTemplate(w, "base.html", data)
 }
 
-// staticFileMiddleware checks if the requested path corresponds to an existing
-// file in the static directory. If yes, it serves the file. If no, it continues
-// to the next handler (normal routing).
-func staticFileMiddleware(staticDir string) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c *echo.Context) error {
-			path := c.Request().URL.Path
-
-			// Construct the full file path
-			filePath := filepath.Join(staticDir, path)
-
-			// Check if the file exists
-			info, err := os.Stat(filePath)
-			if err != nil || info.IsDir() {
-				// File doesn't exist or is a directory, continue to next handler
-				return next(c)
-			}
-
-			// File exists, serve it
-			return c.File(filePath)
-		}
-	}
-}
-
 func Start(ctx context.Context, cfg env.Config, linkSvc *link.Service, clickSvc *click.Service) {
 	e := echo.New()
 
@@ -74,8 +48,7 @@ func Start(ctx context.Context, cfg env.Config, linkSvc *link.Service, clickSvc 
 	e.Use(middleware.Recover())
 	e.Use(middleware.ContextTimeout(time.Second * 30))
 
-	// Serve static files before routing - checks if file exists in static/
-	e.Use(staticFileMiddleware("static"))
+	e.Use(middleware.Static("static"))
 
 	// Create handler with dependencies
 	handler := NewHandler(linkSvc, clickSvc, siteConf.Get("url"))
