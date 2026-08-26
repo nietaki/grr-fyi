@@ -82,6 +82,12 @@ func jsonError(c *echo.Context, status int, msg string) error {
 func (h *Handler) Redirect(c *echo.Context) error {
 	slug := c.Param("slug")
 
+	// Static files have extensions (e.g., favicon.ico, robots.txt, main.css)
+	// Valid slugs are alphanumeric only, so reject anything with a dot
+	if strings.Contains(slug, ".") {
+		return c.NoContent(http.StatusNotFound)
+	}
+
 	ctx := c.Request().Context()
 	foundLink, err := h.linkSvc.Resolve(ctx, slug)
 	if err != nil {

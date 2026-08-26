@@ -136,6 +136,20 @@ func (s *HandlerTestSuite) TestRedirectRevoked() {
 	})
 }
 
+func (s *HandlerTestSuite) TestRedirectRejectsSlugsWithDots() {
+	s.T().Run("returns 404 for slug containing dot (static file pattern)", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/favicon.ico", nil)
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+		c.SetPathValues(echo.PathValues{{Name: "slug", Value: "favicon.ico"}})
+
+		err := s.handler.Redirect(c)
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusNotFound, rec.Code)
+	})
+}
+
 // ==================== CREATE LINK TESTS ====================
 
 func (s *HandlerTestSuite) TestCreateLinkSuccess() {
