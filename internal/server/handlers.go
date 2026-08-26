@@ -34,6 +34,11 @@ func NewHandler(linkSvc *link.Service, clickSvc *click.Service, siteURL string) 
 	}
 }
 
+func (h *Handler) joinURL(elems ...string) string {
+	result, _ := url.JoinPath(h.siteURL, elems...)
+	return result
+}
+
 // Request/Response types for JSON API
 
 // CreateLinkRequest is the JSON request body for POST /_/api/create_link
@@ -153,7 +158,7 @@ func (h *Handler) CreateLink(c *echo.Context) error {
 
 	return c.JSON(http.StatusCreated, CreateLinkResponse{
 		Slug:     resp.Link.Slug,
-		ShortURL: h.siteURL + resp.Link.Slug,
+		ShortURL: h.joinURL(resp.Link.Slug),
 		ClaimKey: resp.ClaimKey,
 	})
 }
@@ -241,11 +246,16 @@ func (h *Handler) EditLink(c *echo.Context) error {
 		return err
 	}
 
+	editURL, _ := url.Parse(h.joinURL("_/edit_link", foundLink.Slug))
+	q := editURL.Query()
+	q.Set("claim_key", claimKey)
+	editURL.RawQuery = q.Encode()
+
 	data := map[string]any{
 		"Slug":        foundLink.Slug,
 		"TargetURL":   foundLink.TargetURL,
-		"ShortURL":    h.siteURL + foundLink.Slug,
-		"EditURL":     h.siteURL + "_/edit_link/" + foundLink.Slug + "?claim_key=" + claimKey,
+		"ShortURL":    h.joinURL(foundLink.Slug),
+		"EditURL":     editURL.String(),
 		"TotalClicks": totalClicks,
 		"DistinctIPs": distinctIPs,
 	}
