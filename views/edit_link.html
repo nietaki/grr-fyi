@@ -9,15 +9,15 @@
 
   <label>
     Short URL
-    <input type="url" value="{{.ShortURL}}" readonly>
+    <fieldset role="group">
+      <input type="url" x-ref="shortUrl" value="{{.ShortURL}}" readonly>
+      <button type="button" @click="copyShortUrl" x-text="copied ? 'Copied!' : 'Copy'">Copy</button>
+    </fieldset>
   </label>
 
   <label>
     Edit Page URL
-    <fieldset role="group">
-      <input type="url" x-ref="editUrl" value="{{.EditURL}}" readonly>
-      <button type="button" @click="copyEditUrl" x-text="copied ? 'Copied!' : 'Copy'">Copy</button>
-    </fieldset>
+    <input type="url" value="{{.EditURL}}" readonly>
   </label>
 </article>
 {{end}}

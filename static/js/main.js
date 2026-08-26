@@ -39,8 +39,8 @@ document.addEventListener('alpine:init', () => {
   Alpine.data('editLink', () => ({
     copied: false,
 
-    copyEditUrl() {
-      const input = this.$refs.editUrl;
+    copyShortUrl() {
+      const input = this.$refs.shortUrl;
       navigator.clipboard.writeText(input.value).then(() => {
         this.copied = true;
         setTimeout(() => { this.copied = false; }, 2000);
