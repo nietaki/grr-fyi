@@ -70,7 +70,7 @@ build:
 
 .PHONY: run
 run: build
-	go run main.go
+	SITE_URL=http://localhost:30666/ go run main.go
 
 .PHONY: clean
 clean:

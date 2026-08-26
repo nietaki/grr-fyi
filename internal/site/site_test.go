@@ -50,6 +50,32 @@ func (s *SiteTestSuite) TestGetReturnsEmptyForMissingKey() {
 	})
 }
 
+func (s *SiteTestSuite) TestReadWithEnvOverride() {
+	s.T().Run("env vars override yaml values", func(t *testing.T) {
+		t.Setenv("SITE_TITLE", "Overridden Title")
+		t.Setenv("SITE_AUTHOR", "Overridden Author")
+		t.Setenv("SITE_URL", "https://overridden.example.com")
+
+		cfg := env.Config{SiteFilePath: filepath.Join(s.projectRoot, "test_support/site.yml")}
+		siteConf := Read(cfg)
+
+		require.Equal(t, "Overridden Title", siteConf.Get("title"))
+		require.Equal(t, "Overridden Author", siteConf.Get("author"))
+		require.Equal(t, "https://overridden.example.com", siteConf.Get("url"))
+	})
+}
+
+func (s *SiteTestSuite) TestReadWithEnvNewKey() {
+	s.T().Run("env vars can add new keys", func(t *testing.T) {
+		t.Setenv("SITE_NEW_KEY", "new value")
+
+		cfg := env.Config{SiteFilePath: filepath.Join(s.projectRoot, "test_support/site.yml")}
+		siteConf := Read(cfg)
+
+		require.Equal(t, "new value", siteConf.Get("new_key"))
+	})
+}
+
 func TestSiteTestSuite(t *testing.T) {
 	suite.Run(t, new(SiteTestSuite))
 }
