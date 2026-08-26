@@ -172,6 +172,18 @@ func (s *HandlerTestSuite) TestRedirectRejectsInvalidSlugs() {
 
 		require.Equal(t, http.StatusNotFound, rec.Code)
 	})
+
+	s.T().Run("returns 404 for slug with path-like pattern", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/static/css/main.css", nil)
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+		c.SetPathValues(echo.PathValues{{Name: "slug", Value: "static/css/main.css"}})
+
+		err := s.handler.Redirect(c)
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusNotFound, rec.Code)
+	})
 }
 
 // ==================== CREATE LINK TESTS ====================
