@@ -154,6 +154,46 @@ func (s *DBTestSuite) TestSlugSequenceInitialized() {
 	})
 }
 
+func (s *DBTestSuite) TestPerformancePragmas() {
+	s.T().Run("sets all performance PRAGMAs correctly", func(t *testing.T) {
+		ctx := context.Background()
+
+		conn, err := Open(ctx, s.cfg)
+		require.NoError(t, err, "Open")
+		defer conn.Close()
+
+		var synchronous string
+		err = conn.QueryRowContext(ctx, "PRAGMA synchronous").Scan(&synchronous)
+		require.NoError(t, err, "query synchronous")
+		require.Equal(t, "1", synchronous, "synchronous should be NORMAL (1)")
+
+		var cacheSize int
+		err = conn.QueryRowContext(ctx, "PRAGMA cache_size").Scan(&cacheSize)
+		require.NoError(t, err, "query cache_size")
+		require.Equal(t, -64000, cacheSize, "cache_size should be -64000 (64MB)")
+
+		var mmapSize int64
+		err = conn.QueryRowContext(ctx, "PRAGMA mmap_size").Scan(&mmapSize)
+		require.NoError(t, err, "query mmap_size")
+		require.Equal(t, int64(268435456), mmapSize, "mmap_size should be 256MB")
+
+		var tempStore string
+		err = conn.QueryRowContext(ctx, "PRAGMA temp_store").Scan(&tempStore)
+		require.NoError(t, err, "query temp_store")
+		require.Equal(t, "2", tempStore, "temp_store should be MEMORY (2)")
+
+		var foreignKeys int
+		err = conn.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&foreignKeys)
+		require.NoError(t, err, "query foreign_keys")
+		require.Equal(t, 1, foreignKeys, "foreign_keys should be ON (1)")
+
+		var autocheckpoint int
+		err = conn.QueryRowContext(ctx, "PRAGMA wal_autocheckpoint").Scan(&autocheckpoint)
+		require.NoError(t, err, "query wal_autocheckpoint")
+		require.Equal(t, 0, autocheckpoint, "wal_autocheckpoint should be 0 (disabled)")
+	})
+}
+
 func TestDBTestSuite(t *testing.T) {
 	suite.Run(t, new(DBTestSuite))
 }

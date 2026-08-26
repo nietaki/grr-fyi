@@ -19,7 +19,7 @@ var migrationsFS embed.FS
 // is managed by litestream (see internal/replication); the WAL pragma ensures
 // writes land in the WAL file that litestream's monitor replicates.
 func Open(ctx context.Context, cfg env.Config) (*sql.DB, error) {
-	dsn := fmt.Sprintf("file:%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(wal)", cfg.DBPath)
+	dsn := fmt.Sprintf("file:%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(wal)&_pragma=synchronous(NORMAL)&_pragma=cache_size(-64000)&_pragma=mmap_size(268435456)&_pragma=temp_store(MEMORY)&_pragma=foreign_keys(ON)&_pragma=wal_autocheckpoint(0)", cfg.DBPath)
 	conn, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
@@ -29,6 +29,7 @@ func Open(ctx context.Context, cfg env.Config) (*sql.DB, error) {
 		return nil, fmt.Errorf("ping sqlite: %w", err)
 	}
 	conn.SetMaxOpenConns(1)
+	conn.SetMaxIdleConns(1)
 	return conn, nil
 }
 

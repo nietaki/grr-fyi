@@ -53,6 +53,10 @@ func (s *Service) CountDistinctIPs(ctx context.Context, linkID int64) (int64, er
 	return s.store.CountDistinctIPs(ctx, linkID)
 }
 
+func (s *Service) Stats(ctx context.Context, linkID int64) (*ClickStats, error) {
+	return s.store.Stats(ctx, linkID)
+}
+
 func (s *Service) Close() {
 	close(s.queue)
 	s.wg.Wait()

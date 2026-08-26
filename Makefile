@@ -72,6 +72,10 @@ build:
 run: build
 	SITE_URL=http://localhost:30666/ go run main.go
 
+.PHONY: run-replicated
+run-replicated: build
+	REPLICATION_ENABLED=true SITE_URL=http://localhost:30666/ go run main.go
+
 .PHONY: clean
 clean:
 	rm ./grr-fyi || true

@@ -175,6 +175,49 @@ func (s *ClickTestSuite) TestCountDistinctIPs() {
 	})
 }
 
+func (s *ClickTestSuite) TestStats() {
+	s.T().Run("returns total clicks and distinct IPs in one query", func(t *testing.T) {
+		ctx := context.Background()
+
+		_, err := s.linkService.Create(ctx, link.CreateRequest{TargetURL: "https://example.com", CustomSlug: "stats-test"})
+		require.NoError(t, err, "Create")
+
+		linkObj, err := s.linkService.Get(ctx, "stats-test")
+		require.NoError(t, err, "Get")
+
+		for i := 0; i < 3; i++ {
+			err = s.clickService.Record(ctx, Info{LinkID: linkObj.ID, IPHash: "same-ip"})
+			require.NoError(t, err)
+		}
+		err = s.clickService.Record(ctx, Info{LinkID: linkObj.ID, IPHash: "ip-2"})
+		require.NoError(t, err)
+		err = s.clickService.Record(ctx, Info{LinkID: linkObj.ID, IPHash: "ip-3"})
+		require.NoError(t, err)
+
+		s.clickService.Flush()
+
+		stats, err := s.clickService.Stats(ctx, linkObj.ID)
+		require.NoError(t, err, "Stats")
+		require.Equal(t, int64(5), stats.Total)
+		require.Equal(t, int64(3), stats.DistinctIP)
+	})
+
+	s.T().Run("returns zeros for a link with no clicks", func(t *testing.T) {
+		ctx := context.Background()
+
+		_, err := s.linkService.Create(ctx, link.CreateRequest{TargetURL: "https://example.com", CustomSlug: "stats-empty"})
+		require.NoError(t, err, "Create")
+
+		linkObj, err := s.linkService.Get(ctx, "stats-empty")
+		require.NoError(t, err, "Get")
+
+		stats, err := s.clickService.Stats(ctx, linkObj.ID)
+		require.NoError(t, err, "Stats")
+		require.Equal(t, int64(0), stats.Total)
+		require.Equal(t, int64(0), stats.DistinctIP)
+	})
+}
+
 func TestClickTestSuite(t *testing.T) {
 	suite.Run(t, new(ClickTestSuite))
 }

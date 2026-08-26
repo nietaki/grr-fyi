@@ -37,6 +37,22 @@ func (s *Store) CountDistinctIPs(ctx context.Context, linkID int64) (int64, erro
 	return count, nil
 }
 
+type ClickStats struct {
+	Total      int64
+	DistinctIP int64
+}
+
+func (s *Store) Stats(ctx context.Context, linkID int64) (*ClickStats, error) {
+	var stats ClickStats
+	err := s.DB.QueryRowContext(ctx,
+		"SELECT COUNT(*), COUNT(DISTINCT ip_hash) FROM clicks WHERE link_id = ?", linkID).
+		Scan(&stats.Total, &stats.DistinctIP)
+	if err != nil {
+		return nil, fmt.Errorf("click stats: %w", err)
+	}
+	return &stats, nil
+}
+
 func (s *Store) Insert(ctx context.Context, info Info) error {
 	_, err := s.DB.ExecContext(ctx,
 		"INSERT INTO clicks (link_id, ip_hash, referrer, country) VALUES (?, ?, ?, ?)",

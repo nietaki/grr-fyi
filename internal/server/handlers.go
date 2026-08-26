@@ -237,11 +237,7 @@ func (h *Handler) EditLink(c *echo.Context) error {
 		return err
 	}
 
-	totalClicks, err := h.clickSvc.Count(ctx, foundLink.ID)
-	if err != nil {
-		return err
-	}
-	distinctIPs, err := h.clickSvc.CountDistinctIPs(ctx, foundLink.ID)
+	stats, err := h.clickSvc.Stats(ctx, foundLink.ID)
 	if err != nil {
 		return err
 	}
@@ -256,8 +252,8 @@ func (h *Handler) EditLink(c *echo.Context) error {
 		"TargetURL":   foundLink.TargetURL,
 		"ShortURL":    h.joinURL(foundLink.Slug),
 		"EditURL":     editURL.String(),
-		"TotalClicks": totalClicks,
-		"DistinctIPs": distinctIPs,
+		"TotalClicks": stats.Total,
+		"DistinctIPs": stats.DistinctIP,
 	}
 
 	return c.Render(http.StatusOK, "edit_link.html", data)

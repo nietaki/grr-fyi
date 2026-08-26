@@ -3,11 +3,12 @@ package link
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"time"
 
 	"github.com/nietaki/grr-fyi/internal/store"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
@@ -22,12 +23,10 @@ func NewService(store *Store, txScope *store.TxScope) *Service {
 func (s *Service) Create(ctx context.Context, req CreateRequest) (*CreateResponse, error) {
 	claimKey := generateClaimKey()
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(claimKey), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, err
-	}
+	hash := hashClaimKey(claimKey)
 
 	var slug string
+	var err error
 	if req.CustomSlug != "" {
 		slug = req.CustomSlug
 	} else {
@@ -38,7 +37,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*CreateRespons
 	}
 
 	now := time.Now().UTC()
-	link, err := s.store.CreateLink(ctx, slug, req.TargetURL, string(hash), now)
+	link, err := s.store.CreateLink(ctx, slug, req.TargetURL, hash, now)
 	if err != nil {
 		return nil, err
 	}
@@ -157,11 +156,15 @@ func (s *Service) Revoke(ctx context.Context, slug, claimKey string) error {
 }
 
 func (l *Link) VerifyClaimKey(claimKey string) error {
-	err := bcrypt.CompareHashAndPassword([]byte(l.ClaimKeyHash), []byte(claimKey))
-	if err != nil {
+	if l.ClaimKeyHash != hashClaimKey(claimKey) {
 		return ErrInvalidClaim
 	}
 	return nil
+}
+
+func hashClaimKey(claimKey string) string {
+	sum := sha256.Sum256([]byte(claimKey))
+	return hex.EncodeToString(sum[:])
 }
 
 func generateClaimKey() string {
