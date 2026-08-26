@@ -716,6 +716,45 @@ func (s *HandlerTestSuite) TestEditLinkMissingClaimKey() {
 	})
 }
 
+func (s *HandlerTestSuite) TestEditLinkShowsClickStats() {
+	s.T().Run("displays total clicks and distinct IPs on edit page", func(t *testing.T) {
+		ctx := context.Background()
+
+		resp, err := s.linkSvc.Create(ctx, link.CreateRequest{
+			TargetURL:  "https://example.com",
+			CustomSlug: "testclicks",
+		})
+		require.NoError(t, err)
+
+		foundLink, err := s.linkSvc.Get(ctx, "testclicks")
+		require.NoError(t, err)
+
+		for i := 0; i < 3; i++ {
+			err = s.clickSvc.Record(ctx, click.Info{LinkID: foundLink.ID, IPHash: "same-ip"})
+			require.NoError(t, err)
+		}
+		err = s.clickSvc.Record(ctx, click.Info{LinkID: foundLink.ID, IPHash: "ip-2"})
+		require.NoError(t, err)
+
+		s.clickSvc.Flush()
+
+		req := httptest.NewRequest(http.MethodGet, "/_/edit_link/testclicks?claim_key="+resp.ClaimKey, nil)
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+		c.SetPathValues(echo.PathValues{{Name: "slug", Value: "testclicks"}})
+
+		err = s.handler.EditLink(c)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, rec.Code)
+		body := rec.Body.String()
+		require.Contains(t, body, "Click Stats")
+		require.Contains(t, body, "Total Clicks")
+		require.Contains(t, body, "Distinct IPs")
+		require.Contains(t, body, `value="4"`)
+		require.Contains(t, body, `value="2"`)
+	})
+}
+
 func (s *HandlerTestSuite) TestEditLinkRevoked() {
 	s.T().Run("returns 410 for revoked link", func(t *testing.T) {
 		ctx := context.Background()

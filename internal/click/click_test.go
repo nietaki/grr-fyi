@@ -4,7 +4,6 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -62,7 +61,7 @@ func (s *ClickTestSuite) TestRecordClick() {
 		err = s.clickService.Record(ctx, info)
 		require.NoError(t, err, "Record")
 
-		time.Sleep(100 * time.Millisecond)
+		s.clickService.Flush()
 
 		count, err := s.clickService.Count(ctx, linkObj.ID)
 		require.NoError(t, err, "Count")
@@ -89,7 +88,7 @@ func (s *ClickTestSuite) TestRecordMultipleClicks() {
 			require.NoError(t, err, "Record %d", i)
 		}
 
-		time.Sleep(200 * time.Millisecond)
+		s.clickService.Flush()
 
 		count, err := s.clickService.Count(ctx, linkObj.ID)
 		require.NoError(t, err, "Count")
@@ -133,7 +132,7 @@ func (s *ClickTestSuite) TestCountDistinctIPs() {
 		err = s.clickService.Record(ctx, Info{LinkID: linkObj.ID, IPHash: "ip-3"})
 		require.NoError(t, err)
 
-		time.Sleep(200 * time.Millisecond)
+		s.clickService.Flush()
 
 		count, err := s.clickService.CountDistinctIPs(ctx, linkObj.ID)
 		require.NoError(t, err, "CountDistinctIPs")
@@ -168,7 +167,7 @@ func (s *ClickTestSuite) TestCountDistinctIPs() {
 		err = s.clickService.Record(ctx, Info{LinkID: linkObj.ID, IPHash: "real-ip"})
 		require.NoError(t, err)
 
-		time.Sleep(100 * time.Millisecond)
+		s.clickService.Flush()
 
 		count, err := s.clickService.CountDistinctIPs(ctx, linkObj.ID)
 		require.NoError(t, err, "CountDistinctIPs")

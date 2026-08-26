@@ -232,11 +232,22 @@ func (h *Handler) EditLink(c *echo.Context) error {
 		return err
 	}
 
+	totalClicks, err := h.clickSvc.Count(ctx, foundLink.ID)
+	if err != nil {
+		return err
+	}
+	distinctIPs, err := h.clickSvc.CountDistinctIPs(ctx, foundLink.ID)
+	if err != nil {
+		return err
+	}
+
 	data := map[string]any{
-		"Slug":      foundLink.Slug,
-		"TargetURL": foundLink.TargetURL,
-		"ShortURL":  h.siteURL + foundLink.Slug,
-		"EditURL":   h.siteURL + "_/edit_link/" + foundLink.Slug + "?claim_key=" + claimKey,
+		"Slug":        foundLink.Slug,
+		"TargetURL":   foundLink.TargetURL,
+		"ShortURL":    h.siteURL + foundLink.Slug,
+		"EditURL":     h.siteURL + "_/edit_link/" + foundLink.Slug + "?claim_key=" + claimKey,
+		"TotalClicks": totalClicks,
+		"DistinctIPs": distinctIPs,
 	}
 
 	return c.Render(http.StatusOK, "edit_link.html", data)

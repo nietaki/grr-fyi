@@ -19,5 +19,17 @@
     Edit Page URL
     <input type="url" value="{{.EditURL}}" readonly>
   </label>
+
+  <fieldset>
+    <legend>Click Stats</legend>
+    <label>
+      Total Clicks
+      <input type="text" value="{{.TotalClicks}}" readonly>
+    </label>
+    <label>
+      Distinct IPs
+      <input type="text" value="{{.DistinctIPs}}" readonly>
+    </label>
+  </fieldset>
 </article>
 {{end}}

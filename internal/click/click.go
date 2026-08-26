@@ -14,10 +14,11 @@ type Info struct {
 }
 
 type Service struct {
-	store *Store
-	queue chan Info
-	done  chan struct{}
-	wg    sync.WaitGroup
+	store     *Store
+	queue     chan Info
+	done      chan struct{}
+	wg        sync.WaitGroup
+	pendingWg sync.WaitGroup
 }
 
 func NewService(store *Store, bufferSize int) *Service {
@@ -34,10 +35,12 @@ func NewService(store *Store, bufferSize int) *Service {
 }
 
 func (s *Service) Record(ctx context.Context, info Info) error {
+	s.pendingWg.Add(1)
 	select {
 	case s.queue <- info:
 		return nil
 	default:
+		s.pendingWg.Done()
 		return nil
 	}
 }
@@ -55,11 +58,16 @@ func (s *Service) Close() {
 	s.wg.Wait()
 }
 
+func (s *Service) Flush() {
+	s.pendingWg.Wait()
+}
+
 func (s *Service) worker() {
 	defer s.wg.Done()
 
 	for info := range s.queue {
 		s.insertClick(info)
+		s.pendingWg.Done()
 	}
 }
 
