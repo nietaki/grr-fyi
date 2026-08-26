@@ -113,6 +113,69 @@ func (s *ClickTestSuite) TestCountZeroForNewLink() {
 	})
 }
 
+func (s *ClickTestSuite) TestCountDistinctIPs() {
+	s.T().Run("counts distinct IP hashes", func(t *testing.T) {
+		ctx := context.Background()
+
+		_, err := s.linkService.Create(ctx, link.CreateRequest{TargetURL: "https://example.com", CustomSlug: "test"})
+		require.NoError(t, err, "Create")
+
+		linkObj, err := s.linkService.Get(ctx, "test")
+		require.NoError(t, err, "Get")
+
+		// 3 clicks from same IP, 2 from different IPs
+		for i := 0; i < 3; i++ {
+			err = s.clickService.Record(ctx, Info{LinkID: linkObj.ID, IPHash: "same-ip"})
+			require.NoError(t, err)
+		}
+		err = s.clickService.Record(ctx, Info{LinkID: linkObj.ID, IPHash: "ip-2"})
+		require.NoError(t, err)
+		err = s.clickService.Record(ctx, Info{LinkID: linkObj.ID, IPHash: "ip-3"})
+		require.NoError(t, err)
+
+		time.Sleep(200 * time.Millisecond)
+
+		count, err := s.clickService.CountDistinctIPs(ctx, linkObj.ID)
+		require.NoError(t, err, "CountDistinctIPs")
+		require.Equal(t, int64(3), count)
+	})
+
+	s.T().Run("returns 0 for a link with no clicks", func(t *testing.T) {
+		ctx := context.Background()
+
+		_, err := s.linkService.Create(ctx, link.CreateRequest{TargetURL: "https://example.com", CustomSlug: "test2"})
+		require.NoError(t, err, "Create")
+
+		linkObj, err := s.linkService.Get(ctx, "test2")
+		require.NoError(t, err, "Get")
+
+		count, err := s.clickService.CountDistinctIPs(ctx, linkObj.ID)
+		require.NoError(t, err, "CountDistinctIPs")
+		require.Equal(t, int64(0), count)
+	})
+
+	s.T().Run("counts empty IP hash as distinct", func(t *testing.T) {
+		ctx := context.Background()
+
+		_, err := s.linkService.Create(ctx, link.CreateRequest{TargetURL: "https://example.com", CustomSlug: "test3"})
+		require.NoError(t, err, "Create")
+
+		linkObj, err := s.linkService.Get(ctx, "test3")
+		require.NoError(t, err, "Get")
+
+		err = s.clickService.Record(ctx, Info{LinkID: linkObj.ID, IPHash: ""})
+		require.NoError(t, err)
+		err = s.clickService.Record(ctx, Info{LinkID: linkObj.ID, IPHash: "real-ip"})
+		require.NoError(t, err)
+
+		time.Sleep(100 * time.Millisecond)
+
+		count, err := s.clickService.CountDistinctIPs(ctx, linkObj.ID)
+		require.NoError(t, err, "CountDistinctIPs")
+		require.Equal(t, int64(2), count)
+	})
+}
+
 func TestClickTestSuite(t *testing.T) {
 	suite.Run(t, new(ClickTestSuite))
 }

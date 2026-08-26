@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS slug_sequence (
     next_value INTEGER NOT NULL DEFAULT 1
 );
 
-INSERT INTO slug_sequence (id, next_value) VALUES (1, 0);
+INSERT INTO slug_sequence (id, next_value) VALUES (1, 262144);
 
 -- +goose Down
 DROP INDEX IF EXISTS idx_clicks_link_id;

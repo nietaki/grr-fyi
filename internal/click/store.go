@@ -27,6 +27,16 @@ func (s *Store) Count(ctx context.Context, linkID int64) (int64, error) {
 	return count, nil
 }
 
+func (s *Store) CountDistinctIPs(ctx context.Context, linkID int64) (int64, error) {
+	var count int64
+	err := s.DB.QueryRowContext(ctx,
+		"SELECT COUNT(DISTINCT ip_hash) FROM clicks WHERE link_id = ?", linkID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("count distinct ips: %w", err)
+	}
+	return count, nil
+}
+
 func (s *Store) Insert(ctx context.Context, info Info) error {
 	_, err := s.DB.ExecContext(ctx,
 		"INSERT INTO clicks (link_id, ip_hash, referrer, country) VALUES (?, ?, ?, ?)",

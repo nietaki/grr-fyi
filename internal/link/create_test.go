@@ -63,8 +63,8 @@ func (s *CreateTestSuite) TestCreateAutoSlugIsSequential() {
 		resp2, err := s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com/2"})
 		require.NoError(t, err, "Create 2")
 
-		require.Equal(t, EncodeSlug(0), resp1.Link.Slug)
-		require.Equal(t, EncodeSlug(1), resp2.Link.Slug)
+		require.Equal(t, EncodeSlug(262144), resp1.Link.Slug)
+		require.Equal(t, EncodeSlug(262145), resp2.Link.Slug)
 	})
 }
 
@@ -114,7 +114,7 @@ func (s *CreateTestSuite) TestAutoSlugSkipsCustomSlugCollision() {
 
 		_, err := s.service.Create(ctx, CreateRequest{
 			TargetURL:  "https://example.com/custom",
-			CustomSlug: EncodeSlug(0),
+			CustomSlug: EncodeSlug(262144),
 		})
 		require.NoError(t, err, "Create custom")
 
@@ -122,7 +122,7 @@ func (s *CreateTestSuite) TestAutoSlugSkipsCustomSlugCollision() {
 			TargetURL: "https://example.com/auto",
 		})
 		require.NoError(t, err, "Create auto")
-		require.Equal(t, EncodeSlug(1), resp.Link.Slug)
+		require.Equal(t, EncodeSlug(262145), resp.Link.Slug)
 	})
 }
 

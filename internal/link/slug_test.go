@@ -2,6 +2,7 @@ package link
 
 import (
 	"math/rand"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -45,6 +46,15 @@ func (s *SlugTestSuite) TestEncodeDecodeRoundtrip() {
 			decoded := DecodeSlug(encoded)
 			require.Equal(t, v, decoded)
 		}
+	})
+
+	s.T().Run("figure out the lowest value for 4 character slug", func(t *testing.T) {
+		n := sort.Search(1<<30, func(i int) bool {
+			return len(EncodeSlug(int64(i))) >= 4
+		})
+		require.Equal(t, 262144, n)
+		require.Equal(t, 4, len(EncodeSlug(int64(n))))
+		require.Equal(t, 3, len(EncodeSlug(int64(n-1))))
 	})
 }
 
