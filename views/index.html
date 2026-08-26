@@ -1,14 +1,24 @@
 {{define "content"}}
-<form method="POST" action="/_/create_link">
-  <fieldset>
-    <label>
-      URL to shorten
-      <input type="url" name="target_url" placeholder="https://example.com/very-long-url" required>
-    </label>
-    <fieldset role="group">
-      <input type="text" name="custom_slug" placeholder="Custom slug (optional)">
-      <input type="submit" value="Shorten">
+<div x-data="createLink">
+  <form x-show="!result" @submit.prevent="submit">
+    <fieldset>
+      <label>
+        URL to shorten
+        <input type="url" x-model="targetUrl" placeholder="https://example.com/very-long-url" required
+               :aria-invalid="error ? 'true' : 'false'" aria-describedby="form-error">
+      </label>
+      <fieldset role="group">
+        <input type="text" x-model="customSlug" placeholder="Custom slug (optional)">
+        <input type="submit" value="Shorten" :disabled="loading">
+      </fieldset>
     </fieldset>
-  </fieldset>
-</form>
+
+    <small id="form-error" x-show="error" x-text="error" class="error"></small>
+  </form>
+
+  <article x-show="result" x-cloak>
+    <p>Short URL: <a x-text="result?.short_url" :href="result?.short_url"></a></p>
+    <small>Claim key: <code x-text="result?.claim_key"></code></small>
+  </article>
+</div>
 {{end}}

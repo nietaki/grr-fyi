@@ -4,6 +4,14 @@ body {
   margin: 0;
 }
 
+[x-cloak] {
+  display: none !important;
+}
+
+small.error {
+  color: red;
+}
+
 .box {
   display: flex;
   flex-flow: column;
