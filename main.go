@@ -9,7 +9,6 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/nietaki/grr-fyi/internal/click"
 	"github.com/nietaki/grr-fyi/internal/db"
@@ -77,17 +76,13 @@ func runServe(ctx context.Context, cmd *cli.Command) error {
 
 	cfg := env.Get()
 
-	store, err := replication.Start(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("start replication: %w", err)
-	}
-	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		if err := store.Close(shutdownCtx); err != nil {
-			slog.Error("failed to close litestream store", "error", err)
+	if cfg.ReplicationEnabled {
+		store, err := replication.Start(ctx, cfg)
+		if err != nil {
+			return fmt.Errorf("start replication: %w", err)
 		}
-	}()
+		defer replication.Close(store)
+	}
 
 	conn, err := db.Open(ctx, cfg)
 	if err != nil {

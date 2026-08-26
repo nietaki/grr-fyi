@@ -3,11 +3,12 @@ package env
 import "github.com/caarlos0/env/v11"
 
 type Config struct {
-	ServerPort   string `env:"SERVER_PORT" envDefault:"30666"`
-	LogFormat    string `env:"LOG_FORMAT" envDefault:"text"`
-	DBPath       string `env:"DB_PATH" envDefault:"db/filedb.sqlite"`
-	ReplicaUrl   string `env:"LITESTREAM_REPLICA_URL" envDefault:""`
-	SiteFilePath string `env:"SITE_FILE_PATH" envDefault:"priv/site.yml"`
+	ServerPort         string `env:"SERVER_PORT" envDefault:"30666"`
+	LogFormat          string `env:"LOG_FORMAT" envDefault:"text"`
+	DBPath             string `env:"DB_PATH" envDefault:"db/filedb.sqlite"`
+	ReplicaUrl         string `env:"LITESTREAM_REPLICA_URL" envDefault:""`
+	ReplicationEnabled bool   `env:"REPLICATION_ENABLED" envDefault:"false"`
+	SiteFilePath       string `env:"SITE_FILE_PATH" envDefault:"priv/site.yml"`
 }
 
 var cfg Config

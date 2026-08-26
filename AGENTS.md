@@ -12,11 +12,11 @@ make build        # go build
 
 ## Architecture
 
-- **Entry point**: `main.go` → starts replication, opens DB, runs migrations, starts Echo server
+- **Entry point**: `main.go` → conditionally starts replication (if `REPLICATION_ENABLED=true`), opens DB, runs migrations, starts Echo server
 - **internal/db**: SQLite connection + goose migrations (embedded from `internal/db/migrations/`)
 - **internal/replication**: Litestream library-mode WAL replication
 - **internal/server**: Echo v5 web server, templates in `templates/`, views in `views/`
-- **internal/env**: Config via env vars (`SERVER_PORT`, `DB_PATH`, `LITESTREAM_REPLICA_URL`, `LOG_LEVEL`)
+- **internal/env**: Config via env vars (`SERVER_PORT`, `DB_PATH`, `LITESTREAM_REPLICA_URL`, `REPLICATION_ENABLED`, `LOG_LEVEL`)
 - **internal/site**: Site config from `priv/site.yml`
 
 ## Critical Constraints
@@ -73,6 +73,7 @@ For a new `CreateLink` function:
 | `SERVER_PORT` | `30666` | |
 | `DB_PATH` | `db/filedb.sqlite` | |
 | `LITESTREAM_REPLICA_URL` | empty | Empty = local `db/litestream/` dir; set `s3://...` for object store |
+| `REPLICATION_ENABLED` | `false` | Set `true` to enable Litestream WAL replication |
 | `LOG_LEVEL` | | Set `debug` for verbose logging |
 
 ## Versions

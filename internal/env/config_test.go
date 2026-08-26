@@ -47,6 +47,25 @@ func (s *ConfigTestSuite) TestGet() {
 	})
 }
 
+func (s *ConfigTestSuite) TestReplicationEnabled() {
+	s.T().Run("defaults to false", func(t *testing.T) {
+		cfg := Load()
+		require.False(t, cfg.ReplicationEnabled)
+	})
+
+	s.T().Run("can be set to true", func(t *testing.T) {
+		t.Setenv("REPLICATION_ENABLED", "true")
+		cfg := Load()
+		require.True(t, cfg.ReplicationEnabled)
+	})
+
+	s.T().Run("can be set to false explicitly", func(t *testing.T) {
+		t.Setenv("REPLICATION_ENABLED", "false")
+		cfg := Load()
+		require.False(t, cfg.ReplicationEnabled)
+	})
+}
+
 func TestConfigTestSuite(t *testing.T) {
 	suite.Run(t, new(ConfigTestSuite))
 }

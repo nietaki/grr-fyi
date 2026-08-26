@@ -58,6 +58,14 @@ func Start(ctx context.Context, cfg env.Config) (*litestream.Store, error) {
 	return store, nil
 }
 
+func Close(store *litestream.Store) {
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := store.Close(shutdownCtx); err != nil {
+		slog.Error("failed to close litestream store", "error", err)
+	}
+}
+
 func newReplicaClient(cfg env.Config) (litestream.ReplicaClient, error) {
 	if cfg.ReplicaUrl != "" {
 		return litestream.NewReplicaClientFromURL(cfg.ReplicaUrl)

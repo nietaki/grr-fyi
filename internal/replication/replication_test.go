@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/benbjohnson/litestream"
 	"github.com/stretchr/testify/require"
@@ -39,12 +38,6 @@ func openAppDB(path string) (*sql.DB, error) {
 	return conn, nil
 }
 
-func closeStore(ctx context.Context, store *litestream.Store) error {
-	timeoutCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	return store.Close(timeoutCtx)
-}
-
 func (s *ReplicationTestSuite) TestStartFileReplica() {
 	s.T().Run("creates replica directory after sync", func(t *testing.T) {
 		ctx := context.Background()
@@ -67,8 +60,7 @@ func (s *ReplicationTestSuite) TestStartFileReplica() {
 		_, err = store.SyncDB(ctx, s.cfg.DBPath, true)
 		require.NoError(t, err, "sync")
 
-		err = closeStore(ctx, store)
-		require.NoError(t, err, "store.Close")
+		Close(store)
 
 		replicaDir := filepath.Join(filepath.Dir(s.cfg.DBPath), "litestream")
 		fi, err := os.Stat(replicaDir)
@@ -109,8 +101,7 @@ func (s *ReplicationTestSuite) TestStartRestoresDeletedDatabase() {
 		_, err = store.SyncDB(ctx, s.cfg.DBPath, true)
 		require.NoError(t, err, "sync (2)")
 
-		err = closeStore(ctx, store)
-		require.NoError(t, err, "store.Close (1)")
+		Close(store)
 
 		for _, suffix := range []string{"", "-wal", "-shm"} {
 			err = os.Remove(s.cfg.DBPath + suffix)
@@ -121,9 +112,7 @@ func (s *ReplicationTestSuite) TestStartRestoresDeletedDatabase() {
 
 		store2, err := Start(ctx, s.cfg)
 		require.NoError(t, err, "Start (2)")
-		defer func() {
-			_ = closeStore(ctx, store2)
-		}()
+		defer Close(store2)
 
 		appDB2, err := openAppDB(s.cfg.DBPath)
 		require.NoError(t, err, "open app db (2)")
@@ -133,6 +122,19 @@ func (s *ReplicationTestSuite) TestStartRestoresDeletedDatabase() {
 		err = appDB2.QueryRow(`SELECT v FROM kv WHERE k = 'answer'`).Scan(&v)
 		require.NoError(t, err, "query restored row")
 		require.Equal(t, "42", v)
+	})
+}
+
+func (s *ReplicationTestSuite) TestClose() {
+	s.T().Run("closes store without panic", func(t *testing.T) {
+		ctx := context.Background()
+
+		store, err := Start(ctx, s.cfg)
+		require.NoError(t, err, "Start")
+
+		require.NotPanics(t, func() {
+			Close(store)
+		})
 	})
 }
 
