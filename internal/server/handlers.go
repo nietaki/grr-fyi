@@ -242,7 +242,7 @@ func (h *Handler) EditLink(c *echo.Context) error {
 
 // Validation functions
 
-var slugRegex = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
+var slugRegex = regexp.MustCompile(`^[a-zA-Z0-9\-_]+$`)
 
 // validateURL checks that the URL is valid and uses http or https scheme.
 // Rejects empty URLs, URLs without a host, and non-http(s) schemes like
@@ -277,7 +277,7 @@ func validateURL(rawURL string) error {
 // Rules:
 //   - Must not be empty
 //   - Must be 50 characters or less
-//   - Can only contain letters and numbers
+//   - Can only contain letters, numbers, dashes, and underscores
 //
 // Returns an error with a human-readable message if validation fails.
 func validateSlug(slug string) error {
@@ -290,7 +290,7 @@ func validateSlug(slug string) error {
 	}
 
 	if !slugRegex.MatchString(slug) {
-		return errors.New("slug can only contain letters and numbers")
+		return errors.New("slug can only contain letters, numbers, dashes, and underscores")
 	}
 
 	return nil

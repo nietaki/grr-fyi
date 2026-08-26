@@ -299,7 +299,7 @@ func (s *HandlerTestSuite) TestCreateLinkInvalidSlug() {
 	s.T().Run("returns 422 for invalid slug format", func(t *testing.T) {
 		reqBody := CreateLinkRequest{
 			TargetURL:  "https://example.com",
-			CustomSlug: "_invalid", // contains underscore
+			CustomSlug: "invalid slug!", // contains space and special char
 		}
 
 		req := httptest.NewRequest(http.MethodPost, "/_/api/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
@@ -412,7 +412,7 @@ func (s *HandlerTestSuite) TestSlugAvailabilityTaken() {
 func (s *HandlerTestSuite) TestSlugAvailabilityInvalidSlug() {
 	s.T().Run("returns 422 for invalid slug", func(t *testing.T) {
 		reqBody := SlugAvailabilityRequest{
-			Slug: "_invalid", // contains underscore
+			Slug: "invalid.slug!", // contains dot and special char
 		}
 
 		req := httptest.NewRequest(http.MethodPost, "/_/api/slug_availability", bytes.NewReader(mustMarshal(t, reqBody)))
@@ -534,14 +534,14 @@ func (s *HandlerTestSuite) TestValidateSlug() {
 		require.NoError(t, err)
 	})
 
-	s.T().Run("rejects slug with hyphens", func(t *testing.T) {
+	s.T().Run("accepts slug with hyphens", func(t *testing.T) {
 		err := validateSlug("my-link")
-		require.Error(t, err)
+		require.NoError(t, err)
 	})
 
-	s.T().Run("rejects slug with underscores", func(t *testing.T) {
+	s.T().Run("accepts slug with underscores", func(t *testing.T) {
 		err := validateSlug("my_link")
-		require.Error(t, err)
+		require.NoError(t, err)
 	})
 
 	s.T().Run("rejects empty slug", func(t *testing.T) {

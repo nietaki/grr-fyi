@@ -1,30 +1,30 @@
 package link
 
-const base62Chars = "9hZPFa2KlLX6rTwJkHItzxyYs0Vd4bfAMUQGmvpCjRuoDieO5c7nNqWE38gS1B"
+const slugChars = "9hZPFa2KlLX6rTwJkHItzxyYs0Vd4bfAMUQGmvpCjRuoDieO5c7nNqWE38gS1B-_"
 
-func EncodeBase62(n int64) string {
+func EncodeSlug(n int64) string {
 	if n == 0 {
-		return string(base62Chars[0])
+		return string(slugChars[0])
 	}
 
 	var result []byte
 	for n > 0 {
-		result = append([]byte{base62Chars[n%62]}, result...)
-		n /= 62
+		result = append([]byte{slugChars[n%64]}, result...)
+		n /= 64
 	}
 	return string(result)
 }
 
-func DecodeBase62(s string) int64 {
+func DecodeSlug(s string) int64 {
 	var result int64
 	for _, c := range s {
-		result = result*62 + int64(charIndex(byte(c)))
+		result = result*64 + int64(charIndex(byte(c)))
 	}
 	return result
 }
 
 func charIndex(c byte) int {
-	for i, ch := range base62Chars {
+	for i, ch := range slugChars {
 		if byte(ch) == c {
 			return i
 		}
