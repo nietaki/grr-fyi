@@ -108,7 +108,7 @@ curl -L https://grr.fyi/abc123
 
 ---
 
-#### `POST /_/create_link` — Create a new shortened link
+#### `POST /_/api/create_link` — Create a new shortened link
 
 Creates a new shortened URL. You can optionally specify a custom slug.
 
@@ -140,7 +140,7 @@ Creates a new shortened URL. You can optionally specify a custom slug.
 
 **Example:**
 ```bash
-curl -X POST https://grr.fyi/_/create_link \
+curl -X POST https://grr.fyi/_/api/create_link \
   -H "Content-Type: application/json" \
   -d '{"target_url": "https://example.com", "custom_slug": "demo"}'
 ```
@@ -149,7 +149,7 @@ curl -X POST https://grr.fyi/_/create_link \
 
 ---
 
-#### `POST /_/slug_availability` — Check if a custom slug is available
+#### `POST /_/api/slug_availability` — Check if a custom slug is available
 
 Checks whether a custom slug is available before attempting to create a link.
 
@@ -173,7 +173,7 @@ Checks whether a custom slug is available before attempting to create a link.
 
 **Example:**
 ```bash
-curl -X POST https://grr.fyi/_/slug_availability \
+curl -X POST https://grr.fyi/_/api/slug_availability \
   -H "Content-Type: application/json" \
   -d '{"slug": "demo"}'
 ```
@@ -184,11 +184,11 @@ curl -X POST https://grr.fyi/_/slug_availability \
 
 ### CORS
 
-All POST endpoints (`/_/create_link`, `/_/slug_availability`) support CORS with `Access-Control-Allow-Origin: *`. This allows the API to be called from any domain.
+All POST endpoints (`/_/api/create_link`, `/_/api/slug_availability`) support CORS with `Access-Control-Allow-Origin: *`. This allows the API to be called from any domain.
 
 **Preflight request:**
 ```bash
-curl -X OPTIONS https://grr.fyi/_/create_link \
+curl -X OPTIONS https://grr.fyi/_/api/create_link \
   -H "Origin: https://example.com" \
   -H "Access-Control-Request-Method: POST" \
   -H "Access-Control-Request-Headers: Content-Type"
@@ -199,7 +199,7 @@ curl -X OPTIONS https://grr.fyi/_/create_link \
 The API is designed to work seamlessly with [Alpine Ajax](https://alpine-ajax.js.org/):
 
 ```html
-<form ax-post="/_/create_link" ax-target="#result">
+<form ax-post="/_/api/create_link" ax-target="#result">
   <input type="url" name="target_url" required>
   <input type="text" name="custom_slug">
   <button type="submit">Shorten</button>

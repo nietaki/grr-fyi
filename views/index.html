@@ -1,6 +1,6 @@
 {{define "content"}}
 <div x-data="createLink">
-  <form x-show="!result" @submit.prevent="submit">
+  <form @submit.prevent="submit">
     <fieldset>
       <label>
         URL to shorten
@@ -15,10 +15,5 @@
 
     <small id="form-error" x-show="error" x-text="error" class="error"></small>
   </form>
-
-  <article x-show="result" x-cloak>
-    <p>Short URL: <a x-text="result?.short_url" :href="result?.short_url"></a></p>
-    <small>Claim key: <code x-text="result?.claim_key"></code></small>
-  </article>
 </div>
 {{end}}

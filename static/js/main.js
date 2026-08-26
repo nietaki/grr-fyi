@@ -8,15 +8,13 @@ document.addEventListener('alpine:init', () => {
     customSlug: '',
     loading: false,
     error: null,
-    result: null,
 
     async submit() {
       this.loading = true;
       this.error = null;
-      this.result = null;
 
       try {
-        const res = await fetch('/_/create_link', {
+        const res = await fetch('/_/api/create_link', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -26,9 +24,7 @@ document.addEventListener('alpine:init', () => {
         });
         const data = await res.json();
         if (res.ok) {
-          this.result = data;
-          this.targetUrl = '';
-          this.customSlug = '';
+          window.location.href = '/_/edit_link/' + data.slug + '?claim_key=' + data.claim_key;
         } else {
           this.error = data.error;
         }
@@ -37,6 +33,18 @@ document.addEventListener('alpine:init', () => {
       } finally {
         this.loading = false;
       }
+    },
+  }));
+
+  Alpine.data('editLink', () => ({
+    copied: false,
+
+    copyEditUrl() {
+      const input = this.$refs.editUrl;
+      navigator.clipboard.writeText(input.value).then(() => {
+        this.copied = true;
+        setTimeout(() => { this.copied = false; }, 2000);
+      });
     },
   }));
 });

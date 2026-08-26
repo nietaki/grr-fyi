@@ -104,6 +104,24 @@ func (s *Service) Get(ctx context.Context, slug string) (*Link, error) {
 	return s.store.GetBySlug(ctx, slug)
 }
 
+func (s *Service) GetWithClaimKey(ctx context.Context, slug, claimKey string) (*Link, error) {
+	link, err := s.store.GetBySlug(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+
+	if link.RevokedAt != nil {
+		return nil, ErrRevoked
+	}
+
+	err = link.VerifyClaimKey(claimKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return link, nil
+}
+
 // SlugExists checks if a slug is already in use in the database.
 // Note: This returns true even for revoked links — revoked slugs cannot be re-used.
 func (s *Service) SlugExists(ctx context.Context, slug string) (bool, error) {
@@ -116,7 +134,7 @@ func (s *Service) Update(ctx context.Context, slug, claimKey, newTarget string) 
 		return err
 	}
 
-	err = verifyClaimKey(link, claimKey)
+	err = link.VerifyClaimKey(claimKey)
 	if err != nil {
 		return err
 	}
@@ -130,7 +148,7 @@ func (s *Service) Revoke(ctx context.Context, slug, claimKey string) error {
 		return err
 	}
 
-	err = verifyClaimKey(link, claimKey)
+	err = link.VerifyClaimKey(claimKey)
 	if err != nil {
 		return err
 	}
@@ -138,8 +156,8 @@ func (s *Service) Revoke(ctx context.Context, slug, claimKey string) error {
 	return s.store.RevokeLink(ctx, slug, time.Now().UTC())
 }
 
-func verifyClaimKey(link *Link, claimKey string) error {
-	err := bcrypt.CompareHashAndPassword([]byte(link.ClaimKeyHash), []byte(claimKey))
+func (l *Link) VerifyClaimKey(claimKey string) error {
+	err := bcrypt.CompareHashAndPassword([]byte(l.ClaimKeyHash), []byte(claimKey))
 	if err != nil {
 		return ErrInvalidClaim
 	}

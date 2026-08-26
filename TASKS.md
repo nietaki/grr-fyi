@@ -5,8 +5,8 @@
 We'll need two endpoints:
 
 - GET `/<slug>` doing the correct 3xx redirect
-- POST `/_/create_link` for creating a new link
-- POST `/_/slug_availability` for checking if a slug is available to be populated
+- POST `/_/api/create_link` for creating a new link
+- POST `/_/api/slug_availability` for checking if a slug is available to be populated
 
 Let's not worry about rate-limiting right now
 
@@ -43,7 +43,7 @@ The POST endpoints should be easy to called using https://alpine-ajax.js.org/
 - **Dependency injection**: Services are created in `main.go` and passed to `server.Start()` rather than created inside the server package. This makes testing easier and keeps concerns separated.
 - **Validation rules**:
   - URLs must use `http` or `https` scheme (rejects `javascript:`, `ftp:`, etc.)
-  - Slugs: alphanumeric + hyphens + underscores, max 50 chars, cannot start with underscore (reserved for system routes like `/_/`)
+  - Slugs: alphanumeric + hyphens + underscores, max 50 chars, cannot start with underscore (reserved for system routes like `/_/api/`)
 - **CORS**: Configured with `AllowOrigins: ["*"]` for public API access. POST endpoints only.
 - **Error handling**: JSON responses with human-readable messages. Domain errors mapped to HTTP codes:
   - `ErrNotFound` → 404

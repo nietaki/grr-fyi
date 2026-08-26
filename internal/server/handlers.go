@@ -36,7 +36,7 @@ func NewHandler(linkSvc *link.Service, clickSvc *click.Service, siteURL string) 
 
 // Request/Response types for JSON API
 
-// CreateLinkRequest is the JSON request body for POST /_/create_link
+// CreateLinkRequest is the JSON request body for POST /_/api/create_link
 type CreateLinkRequest struct {
 	TargetURL  string `json:"target_url"`            // required, must be http or https
 	CustomSlug string `json:"custom_slug,omitempty"` // optional, auto-generated if empty
@@ -49,7 +49,7 @@ type CreateLinkResponse struct {
 	ClaimKey string `json:"claim_key"` // secret key for editing/revoking the link (shown once)
 }
 
-// SlugAvailabilityRequest is the JSON request body for POST /_/slug_availability
+// SlugAvailabilityRequest is the JSON request body for POST /_/api/slug_availability
 type SlugAvailabilityRequest struct {
 	Slug string `json:"slug"` // the custom slug to check
 }
@@ -108,7 +108,7 @@ func (h *Handler) Redirect(c *echo.Context) error {
 	return c.Redirect(http.StatusFound, foundLink.TargetURL)
 }
 
-// CreateLink handles POST /_/create_link requests.
+// CreateLink handles POST /_/api/create_link requests.
 // It creates a new shortened URL with an optional custom slug.
 //
 // Request body: {"target_url": "https://...", "custom_slug": "optional"}
@@ -156,7 +156,7 @@ func (h *Handler) CreateLink(c *echo.Context) error {
 	})
 }
 
-// SlugAvailability handles POST /_/slug_availability requests.
+// SlugAvailability handles POST /_/api/slug_availability requests.
 // It checks whether a custom slug is available for use.
 //
 // Request body: {"slug": "..."}
@@ -189,6 +189,55 @@ func (h *Handler) SlugAvailability(c *echo.Context) error {
 	return c.JSON(http.StatusOK, SlugAvailabilityResponse{
 		Available: !exists,
 	})
+}
+
+// EditLink handles GET/POST /_/edit_link/:slug requests.
+// It displays the edit page for a link after verifying the claim key.
+//
+// The claim key can be provided as:
+//   - Query string parameter: ?claim_key=...
+//   - POST form data: claim_key=...
+//
+// Returns:
+//   - 200 OK with edit page rendered
+//   - 400 Bad Request (missing claim key)
+//   - 401 Unauthorized (invalid claim key)
+//   - 404 Not Found (slug does not exist)
+//   - 410 Gone (link has been revoked)
+func (h *Handler) EditLink(c *echo.Context) error {
+	slug := c.Param("slug")
+
+	claimKey := c.QueryParam("claim_key")
+	if claimKey == "" {
+		claimKey = c.FormValue("claim_key")
+	}
+	if claimKey == "" {
+		return c.String(http.StatusBadRequest, "claim_key is required")
+	}
+
+	ctx := c.Request().Context()
+	foundLink, err := h.linkSvc.GetWithClaimKey(ctx, slug, claimKey)
+	if err != nil {
+		if errors.Is(err, link.ErrNotFound) {
+			return c.NoContent(http.StatusNotFound)
+		}
+		if errors.Is(err, link.ErrRevoked) {
+			return c.NoContent(http.StatusGone)
+		}
+		if errors.Is(err, link.ErrInvalidClaim) {
+			return c.String(http.StatusUnauthorized, "invalid claim key")
+		}
+		return err
+	}
+
+	data := map[string]any{
+		"Slug":      foundLink.Slug,
+		"TargetURL": foundLink.TargetURL,
+		"ShortURL":  h.siteURL + foundLink.Slug,
+		"EditURL":   h.siteURL + "_/edit_link/" + foundLink.Slug + "?claim_key=" + claimKey,
+	}
+
+	return c.Render(http.StatusOK, "edit_link.html", data)
 }
 
 // Validation functions

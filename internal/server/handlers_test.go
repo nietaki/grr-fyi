@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -55,10 +56,11 @@ func (s *HandlerTestSuite) SetupTest() {
 	s.clickSvc = click.NewService(clickStore, 100)
 
 	// Create handler
-	s.handler = NewHandler(s.linkSvc, s.clickSvc, "https://grr.fyi")
+	s.handler = NewHandler(s.linkSvc, s.clickSvc, "https://grr.fyi/")
 
-	// Create Echo instance
+	// Create Echo instance with renderer
 	s.echo = echo.New()
+	s.echo.Renderer = NewTemplateForTest()
 }
 
 func (s *HandlerTestSuite) TearDownTest() {
@@ -195,7 +197,7 @@ func (s *HandlerTestSuite) TestCreateLinkSuccess() {
 			CustomSlug: "mylink",
 		}
 
-		req := httptest.NewRequest(http.MethodPost, "/_/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
+		req := httptest.NewRequest(http.MethodPost, "/_/api/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		c := s.echo.NewContext(req, rec)
@@ -221,7 +223,7 @@ func (s *HandlerTestSuite) TestCreateLinkAutoSlug() {
 			TargetURL: "https://example.com",
 		}
 
-		req := httptest.NewRequest(http.MethodPost, "/_/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
+		req := httptest.NewRequest(http.MethodPost, "/_/api/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		c := s.echo.NewContext(req, rec)
@@ -247,7 +249,7 @@ func (s *HandlerTestSuite) TestCreateLinkInvalidURL() {
 			CustomSlug: "test",
 		}
 
-		req := httptest.NewRequest(http.MethodPost, "/_/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
+		req := httptest.NewRequest(http.MethodPost, "/_/api/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		c := s.echo.NewContext(req, rec)
@@ -281,7 +283,7 @@ func (s *HandlerTestSuite) TestCreateLinkSlugTaken() {
 			CustomSlug: "taken",
 		}
 
-		req := httptest.NewRequest(http.MethodPost, "/_/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
+		req := httptest.NewRequest(http.MethodPost, "/_/api/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		c := s.echo.NewContext(req, rec)
@@ -300,7 +302,7 @@ func (s *HandlerTestSuite) TestCreateLinkInvalidSlug() {
 			CustomSlug: "_invalid", // contains underscore
 		}
 
-		req := httptest.NewRequest(http.MethodPost, "/_/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
+		req := httptest.NewRequest(http.MethodPost, "/_/api/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		c := s.echo.NewContext(req, rec)
@@ -314,7 +316,7 @@ func (s *HandlerTestSuite) TestCreateLinkInvalidSlug() {
 
 func (s *HandlerTestSuite) TestCreateLinkMalformedJSON() {
 	s.T().Run("returns 400 for malformed JSON", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/_/create_link", strings.NewReader("{invalid json"))
+		req := httptest.NewRequest(http.MethodPost, "/_/api/create_link", strings.NewReader("{invalid json"))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		c := s.echo.NewContext(req, rec)
@@ -338,7 +340,7 @@ func (s *HandlerTestSuite) TestCreateLinkEmptyTargetURL() {
 			CustomSlug: "test",
 		}
 
-		req := httptest.NewRequest(http.MethodPost, "/_/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
+		req := httptest.NewRequest(http.MethodPost, "/_/api/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		c := s.echo.NewContext(req, rec)
@@ -358,7 +360,7 @@ func (s *HandlerTestSuite) TestSlugAvailabilityAvailable() {
 			Slug: "available",
 		}
 
-		req := httptest.NewRequest(http.MethodPost, "/_/slug_availability", bytes.NewReader(mustMarshal(t, reqBody)))
+		req := httptest.NewRequest(http.MethodPost, "/_/api/slug_availability", bytes.NewReader(mustMarshal(t, reqBody)))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		c := s.echo.NewContext(req, rec)
@@ -390,7 +392,7 @@ func (s *HandlerTestSuite) TestSlugAvailabilityTaken() {
 			Slug: "taken",
 		}
 
-		req := httptest.NewRequest(http.MethodPost, "/_/slug_availability", bytes.NewReader(mustMarshal(t, reqBody)))
+		req := httptest.NewRequest(http.MethodPost, "/_/api/slug_availability", bytes.NewReader(mustMarshal(t, reqBody)))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		c := s.echo.NewContext(req, rec)
@@ -413,7 +415,7 @@ func (s *HandlerTestSuite) TestSlugAvailabilityInvalidSlug() {
 			Slug: "_invalid", // contains underscore
 		}
 
-		req := httptest.NewRequest(http.MethodPost, "/_/slug_availability", bytes.NewReader(mustMarshal(t, reqBody)))
+		req := httptest.NewRequest(http.MethodPost, "/_/api/slug_availability", bytes.NewReader(mustMarshal(t, reqBody)))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		c := s.echo.NewContext(req, rec)
@@ -427,7 +429,7 @@ func (s *HandlerTestSuite) TestSlugAvailabilityInvalidSlug() {
 
 func (s *HandlerTestSuite) TestSlugAvailabilityMalformedJSON() {
 	s.T().Run("returns 400 for malformed JSON", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/_/slug_availability", strings.NewReader("{invalid json"))
+		req := httptest.NewRequest(http.MethodPost, "/_/api/slug_availability", strings.NewReader("{invalid json"))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		c := s.echo.NewContext(req, rec)
@@ -450,7 +452,7 @@ func (s *HandlerTestSuite) TestSlugAvailabilityEmptySlug() {
 			Slug: "",
 		}
 
-		req := httptest.NewRequest(http.MethodPost, "/_/slug_availability", bytes.NewReader(mustMarshal(t, reqBody)))
+		req := httptest.NewRequest(http.MethodPost, "/_/api/slug_availability", bytes.NewReader(mustMarshal(t, reqBody)))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		c := s.echo.NewContext(req, rec)
@@ -594,7 +596,7 @@ func (s *HandlerTestSuite) TestCreateLinkCORSPreflight() {
 			CustomSlug: "corsTest",
 		}
 
-		req := httptest.NewRequest(http.MethodPost, "/_/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
+		req := httptest.NewRequest(http.MethodPost, "/_/api/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Origin", "https://example.org")
 		rec := httptest.NewRecorder()
@@ -608,4 +610,132 @@ func (s *HandlerTestSuite) TestCreateLinkCORSPreflight() {
 
 func TestHandlerTestSuite(t *testing.T) {
 	suite.Run(t, new(HandlerTestSuite))
+}
+
+// ==================== EDIT LINK TESTS ====================
+
+func (s *HandlerTestSuite) TestEditLinkValidClaimKeyQuery() {
+	s.T().Run("renders edit page with valid claim key in query string", func(t *testing.T) {
+		ctx := context.Background()
+
+		resp, err := s.linkSvc.Create(ctx, link.CreateRequest{
+			TargetURL:  "https://example.com",
+			CustomSlug: "testedit",
+		})
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/_/edit_link/testedit?claim_key="+resp.ClaimKey, nil)
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+		c.SetPathValues(echo.PathValues{{Name: "slug", Value: "testedit"}})
+
+		err = s.handler.EditLink(c)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.Contains(t, rec.Body.String(), "https://example.com")
+	})
+}
+
+func (s *HandlerTestSuite) TestEditLinkValidClaimKeyPost() {
+	s.T().Run("renders edit page with valid claim key in POST form data", func(t *testing.T) {
+		ctx := context.Background()
+
+		resp, err := s.linkSvc.Create(ctx, link.CreateRequest{
+			TargetURL:  "https://example.com",
+			CustomSlug: "testeditpost",
+		})
+		require.NoError(t, err)
+
+		form := url.Values{}
+		form.Set("claim_key", resp.ClaimKey)
+		req := httptest.NewRequest(http.MethodPost, "/_/edit_link/testeditpost", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+		c.SetPathValues(echo.PathValues{{Name: "slug", Value: "testeditpost"}})
+
+		err = s.handler.EditLink(c)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.Contains(t, rec.Body.String(), "https://example.com")
+	})
+}
+
+func (s *HandlerTestSuite) TestEditLinkNotFound() {
+	s.T().Run("returns 404 for non-existent slug", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/_/edit_link/nonexistent?claim_key=somekey", nil)
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+		c.SetPathValues(echo.PathValues{{Name: "slug", Value: "nonexistent"}})
+
+		err := s.handler.EditLink(c)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNotFound, rec.Code)
+	})
+}
+
+func (s *HandlerTestSuite) TestEditLinkInvalidClaimKey() {
+	s.T().Run("returns 401 for invalid claim key", func(t *testing.T) {
+		ctx := context.Background()
+
+		_, err := s.linkSvc.Create(ctx, link.CreateRequest{
+			TargetURL:  "https://example.com",
+			CustomSlug: "testinvalid",
+		})
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/_/edit_link/testinvalid?claim_key=wrongkey", nil)
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+		c.SetPathValues(echo.PathValues{{Name: "slug", Value: "testinvalid"}})
+
+		err = s.handler.EditLink(c)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+}
+
+func (s *HandlerTestSuite) TestEditLinkMissingClaimKey() {
+	s.T().Run("returns 400 for missing claim key", func(t *testing.T) {
+		ctx := context.Background()
+
+		_, err := s.linkSvc.Create(ctx, link.CreateRequest{
+			TargetURL:  "https://example.com",
+			CustomSlug: "testmissing",
+		})
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/_/edit_link/testmissing", nil)
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+		c.SetPathValues(echo.PathValues{{Name: "slug", Value: "testmissing"}})
+
+		err = s.handler.EditLink(c)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+}
+
+func (s *HandlerTestSuite) TestEditLinkRevoked() {
+	s.T().Run("returns 410 for revoked link", func(t *testing.T) {
+		ctx := context.Background()
+
+		resp, err := s.linkSvc.Create(ctx, link.CreateRequest{
+			TargetURL:  "https://example.com",
+			CustomSlug: "testrevoked",
+		})
+		require.NoError(t, err)
+
+		err = s.linkSvc.Revoke(ctx, "testrevoked", resp.ClaimKey)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/_/edit_link/testrevoked?claim_key="+resp.ClaimKey, nil)
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+		c.SetPathValues(echo.PathValues{{Name: "slug", Value: "testrevoked"}})
+
+		err = s.handler.EditLink(c)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusGone, rec.Code)
+	})
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"html/template"
 	"io"
+	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/labstack/echo/v5"
@@ -17,6 +19,7 @@ import (
 // TODO: funcMap
 type Template struct {
 	templates *template.Template
+	viewsPath string
 }
 
 func NewTemplate(siteConf site.SiteConfig) *Template {
@@ -29,13 +32,31 @@ func NewTemplate(siteConf site.SiteConfig) *Template {
 	}
 	return &Template{
 		templates: tpl,
+		viewsPath: "views",
 	}
 }
 
 func (t *Template) Render(c *echo.Context, w io.Writer, name string, data any) error {
 	tmpl := template.Must(t.templates.Clone())
-	tmpl = template.Must(tmpl.ParseFiles("views/" + name))
+	tmpl = template.Must(tmpl.ParseFiles(filepath.Join(t.viewsPath, name)))
 	return tmpl.ExecuteTemplate(w, "base.html", data)
+}
+
+func NewTemplateForTest() *Template {
+	funcs := template.FuncMap{
+		"site": func(s string) string { return "test" },
+	}
+	_, filename, _, _ := runtime.Caller(0)
+	projectRoot := filepath.Join(filepath.Dir(filename), "../..")
+	templatesPath := filepath.Join(projectRoot, "templates", "*.html")
+	tpl, err := template.New("").Funcs(funcs).ParseGlob(templatesPath)
+	if err != nil {
+		panic(err)
+	}
+	return &Template{
+		templates: tpl,
+		viewsPath: filepath.Join(projectRoot, "views"),
+	}
 }
 
 func Start(ctx context.Context, cfg env.Config, linkSvc *link.Service, clickSvc *click.Service) {
@@ -54,7 +75,7 @@ func Start(ctx context.Context, cfg env.Config, linkSvc *link.Service, clickSvc 
 	handler := NewHandler(linkSvc, clickSvc, siteConf.Get("url"))
 
 	// API routes with CORS
-	api := e.Group("/_")
+	api := e.Group("/_/api")
 	api.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{"POST", "OPTIONS"},
@@ -63,6 +84,9 @@ func Start(ctx context.Context, cfg env.Config, linkSvc *link.Service, clickSvc 
 
 	api.POST("/create_link", handler.CreateLink)
 	api.POST("/slug_availability", handler.SlugAvailability)
+
+	e.GET("/_/edit_link/:slug", handler.EditLink)
+	e.POST("/_/edit_link/:slug", handler.EditLink)
 
 	// Redirect route - must be last to avoid catching other routes
 	e.GET("/:slug", handler.Redirect)
