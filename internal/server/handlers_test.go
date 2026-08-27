@@ -523,67 +523,6 @@ func (s *HandlerTestSuite) TestValidateURL() {
 	})
 }
 
-func (s *HandlerTestSuite) TestValidateSlug() {
-	s.T().Run("accepts valid slug with alphanumeric", func(t *testing.T) {
-		err := validateSlug("mylink123")
-		require.NoError(t, err)
-	})
-
-	s.T().Run("accepts slug with uppercase letters", func(t *testing.T) {
-		err := validateSlug("MyLink")
-		require.NoError(t, err)
-	})
-
-	s.T().Run("accepts slug with hyphens", func(t *testing.T) {
-		err := validateSlug("my-link")
-		require.NoError(t, err)
-	})
-
-	s.T().Run("accepts slug with underscores", func(t *testing.T) {
-		err := validateSlug("my_link")
-		require.NoError(t, err)
-	})
-
-	s.T().Run("rejects empty slug", func(t *testing.T) {
-		err := validateSlug("")
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "required")
-	})
-
-	s.T().Run("rejects slug with invalid characters", func(t *testing.T) {
-		err := validateSlug("invalid slug!")
-		require.Error(t, err)
-	})
-
-	s.T().Run("rejects slug with dots", func(t *testing.T) {
-		err := validateSlug("my.slug")
-		require.Error(t, err)
-	})
-
-	s.T().Run("rejects slug with spaces", func(t *testing.T) {
-		err := validateSlug("my slug")
-		require.Error(t, err)
-	})
-
-	s.T().Run("rejects slug with slash", func(t *testing.T) {
-		err := validateSlug("my/slug")
-		require.Error(t, err)
-	})
-
-	s.T().Run("rejects slug too long", func(t *testing.T) {
-		longSlug := strings.Repeat("a", 51)
-		err := validateSlug(longSlug)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "50 characters")
-	})
-
-	s.T().Run("accepts slug at max length", func(t *testing.T) {
-		maxSlug := strings.Repeat("a", 50)
-		err := validateSlug(maxSlug)
-		require.NoError(t, err)
-	})
-}
-
 // ==================== CORS TESTS ====================
 
 func (s *HandlerTestSuite) TestCreateLinkCORSPreflight() {

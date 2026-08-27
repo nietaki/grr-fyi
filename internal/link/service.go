@@ -28,6 +28,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*CreateRespons
 	var slug string
 	var err error
 	if req.CustomSlug != "" {
+		if err := ValidateSlug(req.CustomSlug); err != nil {
+			return nil, err
+		}
 		slug = req.CustomSlug
 	} else {
 		slug, err = s.generateAutoSlug(ctx)

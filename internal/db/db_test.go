@@ -137,7 +137,7 @@ func (s *DBTestSuite) TestMigrateCreatesUrlShortenerTables() {
 }
 
 func (s *DBTestSuite) TestSlugSequenceInitialized() {
-	s.T().Run("initializes slug_sequence with next_value = 262144", func(t *testing.T) {
+	s.T().Run("initializes slug_sequence with next_value = 4096", func(t *testing.T) {
 		ctx := context.Background()
 
 		conn, err := Open(ctx, s.cfg)
@@ -150,7 +150,7 @@ func (s *DBTestSuite) TestSlugSequenceInitialized() {
 		var nextValue int
 		err = conn.QueryRowContext(ctx, `SELECT next_value FROM slug_sequence WHERE id = 1`).Scan(&nextValue)
 		require.NoError(t, err, "slug_sequence not initialized")
-		require.Equal(t, 262144, nextValue)
+		require.Equal(t, 4096, nextValue)
 	})
 }
 

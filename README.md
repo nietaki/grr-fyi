@@ -25,14 +25,14 @@ Migrations in `internal/db/migrations/`:
 
 Early links get shorter slugs, later ones get longer. We use **sequential base64 encoding**:
 
-- `slug_sequence.next_value` starts at 262144 (ensures minimum 4-character slugs)
-- ID 262144 → first 4-char slug, ID 262145 → next, etc.
+- `slug_sequence.next_value` starts at 4096 (ensures minimum 3-character slugs)
+- ID 4096 → first 3-char slug, ID 4097 → next, etc.
 - Base64 charset: `9hZPFa2KlLX6rTwJkHItzxyYs0Vd4bfAMUQGmvpCjRuoDieO5c7nNqWE38gS1B-_` (64 characters, shuffled)
 - Each new link increments the sequence
 
 **Why not random?** Sequential encoding is deterministic, collision-free, and naturally produces short slugs early. The tradeoff is that someone could estimate total link count by decoding slugs, but this is acceptable for our use case.
 
-**Why start at 262144?** This ensures all auto-generated slugs are at least 4 characters long, avoiding very short slugs that might be confusing or easily guessable.
+**Why start at 4096?** This ensures all auto-generated slugs are at least 3 characters long, avoiding very short slugs that might be confusing or easily guessable.
 
 ### Custom Slugs
 
@@ -147,7 +147,7 @@ Creates a new shortened URL. You can optionally specify a custom slug.
 
 **Validation Rules:**
 - `target_url` must be a valid HTTP or HTTPS URL (rejects `javascript:`, `ftp:`, etc.)
-- `custom_slug` (if provided) must be 1-50 characters, alphanumeric + hyphens + underscores, cannot start with `_`
+- `custom_slug` (if provided) must be 3-50 characters, alphanumeric + hyphens + underscores, cannot start with `_`
 
 **Example:**
 ```bash

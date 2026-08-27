@@ -63,8 +63,8 @@ func (s *CreateTestSuite) TestCreateAutoSlugIsSequential() {
 		resp2, err := s.service.Create(ctx, CreateRequest{TargetURL: "https://example.com/2"})
 		require.NoError(t, err, "Create 2")
 
-		require.Equal(t, EncodeSlug(262144), resp1.Link.Slug)
-		require.Equal(t, EncodeSlug(262145), resp2.Link.Slug)
+		require.Equal(t, EncodeSlug(4096), resp1.Link.Slug)
+		require.Equal(t, EncodeSlug(4097), resp2.Link.Slug)
 	})
 }
 
@@ -114,7 +114,7 @@ func (s *CreateTestSuite) TestAutoSlugSkipsCustomSlugCollision() {
 
 		_, err := s.service.Create(ctx, CreateRequest{
 			TargetURL:  "https://example.com/custom",
-			CustomSlug: EncodeSlug(262144),
+			CustomSlug: EncodeSlug(4096),
 		})
 		require.NoError(t, err, "Create custom")
 
@@ -122,7 +122,30 @@ func (s *CreateTestSuite) TestAutoSlugSkipsCustomSlugCollision() {
 			TargetURL: "https://example.com/auto",
 		})
 		require.NoError(t, err, "Create auto")
-		require.Equal(t, EncodeSlug(262145), resp.Link.Slug)
+		require.Equal(t, EncodeSlug(4097), resp.Link.Slug)
+	})
+}
+
+func (s *CreateTestSuite) TestCreateWithInvalidCustomSlug() {
+	s.T().Run("rejects custom slug shorter than 3 characters", func(t *testing.T) {
+		ctx := context.Background()
+
+		_, err := s.service.Create(ctx, CreateRequest{
+			TargetURL:  "https://example.com",
+			CustomSlug: "ab",
+		})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "at least 3")
+	})
+
+	s.T().Run("rejects custom slug with invalid characters", func(t *testing.T) {
+		ctx := context.Background()
+
+		_, err := s.service.Create(ctx, CreateRequest{
+			TargetURL:  "https://example.com",
+			CustomSlug: "invalid slug!",
+		})
+		require.Error(t, err)
 	})
 }
 

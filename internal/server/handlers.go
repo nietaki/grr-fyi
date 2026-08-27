@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
 
 	"github.com/labstack/echo/v5"
@@ -89,7 +88,7 @@ func (h *Handler) Redirect(c *echo.Context) error {
 
 	// Validate slug format - reject anything that doesn't match the slug pattern
 	// This allows static files (which have extensions like .ico, .css, .js) to be served
-	if err := validateSlug(slug); err != nil {
+	if err := link.ValidateSlug(slug); err != nil {
 		return c.NoContent(http.StatusNotFound)
 	}
 
@@ -139,7 +138,7 @@ func (h *Handler) CreateLink(c *echo.Context) error {
 
 	// Validate custom slug if provided
 	if req.CustomSlug != "" {
-		if err := validateSlug(req.CustomSlug); err != nil {
+		if err := link.ValidateSlug(req.CustomSlug); err != nil {
 			return jsonError(c, http.StatusUnprocessableEntity, err.Error())
 		}
 	}
@@ -183,7 +182,7 @@ func (h *Handler) SlugAvailability(c *echo.Context) error {
 	}
 
 	// Validate slug
-	if err := validateSlug(req.Slug); err != nil {
+	if err := link.ValidateSlug(req.Slug); err != nil {
 		return jsonError(c, http.StatusUnprocessableEntity, err.Error())
 	}
 
@@ -261,8 +260,6 @@ func (h *Handler) EditLink(c *echo.Context) error {
 
 // Validation functions
 
-var slugRegex = regexp.MustCompile(`^[a-zA-Z0-9\-_]+$`)
-
 // validateURL checks that the URL is valid and uses http or https scheme.
 // Rejects empty URLs, URLs without a host, and non-http(s) schemes like
 // javascript:, ftp:, file:, etc.
@@ -286,30 +283,6 @@ func validateURL(rawURL string) error {
 
 	if parsed.Host == "" {
 		return errors.New("URL must include a host")
-	}
-
-	return nil
-}
-
-// validateSlug checks that the slug is valid for use as a URL path segment.
-//
-// Rules:
-//   - Must not be empty
-//   - Must be 50 characters or less
-//   - Can only contain letters, numbers, dashes, and underscores
-//
-// Returns an error with a human-readable message if validation fails.
-func validateSlug(slug string) error {
-	if slug == "" {
-		return errors.New("slug is required")
-	}
-
-	if len(slug) > 50 {
-		return errors.New("slug must be 50 characters or less")
-	}
-
-	if !slugRegex.MatchString(slug) {
-		return errors.New("slug can only contain letters, numbers, dashes, and underscores")
 	}
 
 	return nil
