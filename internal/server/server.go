@@ -12,6 +12,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
+	"github.com/nietaki/grr-fyi/internal/captcha"
 	"github.com/nietaki/grr-fyi/internal/click"
 	"github.com/nietaki/grr-fyi/internal/env"
 	"github.com/nietaki/grr-fyi/internal/link"
@@ -64,7 +65,6 @@ func NewTemplateForTest() *Template {
 func Start(ctx context.Context, cfg env.Config, linkSvc *link.Service, clickSvc *click.Service) {
 	e := echo.New()
 
-	// Read site config once and share between template and handler
 	siteConf := site.Read(cfg)
 	e.Renderer = NewTemplate(siteConf)
 
@@ -73,31 +73,36 @@ func Start(ctx context.Context, cfg env.Config, linkSvc *link.Service, clickSvc 
 
 	e.Use(middleware.Static("static"))
 
-	// Create handler with dependencies
-	handler := NewHandler(linkSvc, clickSvc, siteConf.Get("url"))
+	captchaVerifier := captcha.New(
+		cfg.AltchaSecret,
+		cfg.AltchaCost,
+		time.Duration(cfg.AltchaExpiryMin)*time.Minute,
+	)
 
-	// API routes with CORS
+	handler := NewHandler(linkSvc, clickSvc, siteConf.Get("url"), captchaVerifier)
+
 	api := e.Group("/_/api")
 	api.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
-		AllowMethods: []string{"POST", "OPTIONS"},
+		AllowMethods: []string{"GET", "POST", "OPTIONS"},
 		AllowHeaders: []string{"Content-Type"},
 	}))
 
+	api.GET("/altcha/challenge", handler.AltchaChallenge)
 	api.POST("/create_link", handler.CreateLink)
 	api.POST("/slug_availability", handler.SlugAvailability)
 
 	e.GET("/_/edit_link/:slug", handler.EditLink)
 	e.POST("/_/edit_link/:slug", handler.EditLink)
 
-	// Redirect route - must be last to avoid catching other routes
 	e.GET("/:slug", handler.Redirect)
 
 	e.GET("/", func(c *echo.Context) error {
-		return c.Render(200, "index.html", map[string]any{})
+		return c.Render(200, "index.html", map[string]any{
+			"captchaEnabled": captchaVerifier.Enabled(),
+		})
 	})
 
-	// Enable pprof endpoints for performance profiling when PPROF_ENABLED=true
 	if cfg.PprofEnabled {
 		registerPprof(e)
 	}

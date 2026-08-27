@@ -66,6 +66,43 @@ func (s *ConfigTestSuite) TestReplicationEnabled() {
 	})
 }
 
+func (s *ConfigTestSuite) TestAltchaDefaults() {
+	s.T().Run("AltchaSecret defaults to empty", func(t *testing.T) {
+		cfg := Load()
+		require.Empty(t, cfg.AltchaSecret)
+	})
+
+	s.T().Run("AltchaCost defaults to 5000", func(t *testing.T) {
+		cfg := Load()
+		require.Equal(t, 5000, cfg.AltchaCost)
+	})
+
+	s.T().Run("AltchaExpiryMin defaults to 10", func(t *testing.T) {
+		cfg := Load()
+		require.Equal(t, 10, cfg.AltchaExpiryMin)
+	})
+}
+
+func (s *ConfigTestSuite) TestAltchaCustomValues() {
+	s.T().Run("can set AltchaSecret", func(t *testing.T) {
+		t.Setenv("ALTCHA_SECRET", "my-secret")
+		cfg := Load()
+		require.Equal(t, "my-secret", cfg.AltchaSecret)
+	})
+
+	s.T().Run("can set AltchaCost", func(t *testing.T) {
+		t.Setenv("ALTCHA_COST", "10000")
+		cfg := Load()
+		require.Equal(t, 10000, cfg.AltchaCost)
+	})
+
+	s.T().Run("can set AltchaExpiryMin", func(t *testing.T) {
+		t.Setenv("ALTCHA_EXPIRY_MINUTES", "30")
+		cfg := Load()
+		require.Equal(t, 30, cfg.AltchaExpiryMin)
+	})
+}
+
 func TestConfigTestSuite(t *testing.T) {
 	suite.Run(t, new(ConfigTestSuite))
 }

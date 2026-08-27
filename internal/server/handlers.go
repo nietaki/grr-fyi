@@ -7,22 +7,19 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v5"
+	"github.com/nietaki/grr-fyi/internal/captcha"
 	"github.com/nietaki/grr-fyi/internal/click"
 	"github.com/nietaki/grr-fyi/internal/link"
 )
 
-// Handler holds dependencies for HTTP handlers.
-// It provides JSON API endpoints for the URL shortener.
 type Handler struct {
 	linkSvc  *link.Service
 	clickSvc *click.Service
-	siteURL  string // base URL of the site (e.g., "https://grr.fyi/"), always ends with "/"
+	siteURL  string
+	captcha  captcha.Verifier
 }
 
-// NewHandler creates a new Handler with the given dependencies.
-// siteURL is the base URL used to construct short URLs in responses.
-func NewHandler(linkSvc *link.Service, clickSvc *click.Service, siteURL string) *Handler {
-	// Ensure siteURL ends with a slash
+func NewHandler(linkSvc *link.Service, clickSvc *click.Service, siteURL string, captcha captcha.Verifier) *Handler {
 	if !strings.HasSuffix(siteURL, "/") {
 		siteURL += "/"
 	}
@@ -30,6 +27,7 @@ func NewHandler(linkSvc *link.Service, clickSvc *click.Service, siteURL string) 
 		linkSvc:  linkSvc,
 		clickSvc: clickSvc,
 		siteURL:  siteURL,
+		captcha:  captcha,
 	}
 }
 
@@ -40,10 +38,10 @@ func (h *Handler) joinURL(elems ...string) string {
 
 // Request/Response types for JSON API
 
-// CreateLinkRequest is the JSON request body for POST /_/api/create_link
 type CreateLinkRequest struct {
-	TargetURL  string `json:"target_url"`            // required, must be http or https
-	CustomSlug string `json:"custom_slug,omitempty"` // optional, auto-generated if empty
+	TargetURL  string `json:"target_url"`
+	CustomSlug string `json:"custom_slug,omitempty"`
+	Altcha     string `json:"altcha,omitempty"`
 }
 
 // CreateLinkResponse is the JSON response for successful link creation
@@ -131,12 +129,19 @@ func (h *Handler) CreateLink(c *echo.Context) error {
 		return jsonError(c, http.StatusBadRequest, "invalid request body")
 	}
 
-	// Validate URL
+	if h.captcha.Enabled() {
+		if err := h.captcha.Verify(req.Altcha); err != nil {
+			if errors.Is(err, captcha.ErrExpired) {
+				return jsonError(c, http.StatusUnprocessableEntity, "captcha expired")
+			}
+			return jsonError(c, http.StatusUnprocessableEntity, "captcha verification failed")
+		}
+	}
+
 	if err := validateURL(req.TargetURL); err != nil {
 		return jsonError(c, http.StatusUnprocessableEntity, err.Error())
 	}
 
-	// Validate custom slug if provided
 	if req.CustomSlug != "" {
 		if err := link.ValidateSlug(req.CustomSlug); err != nil {
 			return jsonError(c, http.StatusUnprocessableEntity, err.Error())
@@ -160,6 +165,18 @@ func (h *Handler) CreateLink(c *echo.Context) error {
 		ShortURL: h.joinURL(resp.Link.Slug),
 		ClaimKey: resp.ClaimKey,
 	})
+}
+
+func (h *Handler) AltchaChallenge(c *echo.Context) error {
+	if !h.captcha.Enabled() {
+		return jsonError(c, http.StatusNotFound, "captcha not enabled")
+	}
+	challengeJSON, err := h.captcha.NewChallenge()
+	if err != nil {
+		return jsonError(c, http.StatusInternalServerError, "failed to create challenge")
+	}
+	c.Response().Header().Set("Content-Type", "application/json")
+	return c.JSONBlob(http.StatusOK, challengeJSON)
 }
 
 // SlugAvailability handles POST /_/api/slug_availability requests.

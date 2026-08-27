@@ -10,6 +10,9 @@ type Config struct {
 	ReplicationEnabled bool   `env:"REPLICATION_ENABLED" envDefault:"false"`
 	SiteFilePath       string `env:"SITE_FILE_PATH" envDefault:"priv/site.yml"`
 	PprofEnabled       bool   `env:"PPROF_ENABLED" envDefault:"false"`
+	AltchaSecret       string `env:"ALTCHA_SECRET" envDefault:""`
+	AltchaCost         int    `env:"ALTCHA_COST" envDefault:"5000"`
+	AltchaExpiryMin    int    `env:"ALTCHA_EXPIRY_MINUTES" envDefault:"10"`
 }
 
 var cfg Config

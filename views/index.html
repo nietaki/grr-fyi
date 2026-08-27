@@ -9,9 +9,15 @@
       </label>
       <fieldset role="group">
         <input type="text" x-model="customSlug" placeholder="Custom slug (optional)">
-        <input type="submit" value="Shorten" :disabled="loading">
+        <input type="submit" value="Shorten" :disabled="loading || (captchaRequired && !captchaPayload)">
       </fieldset>
     </fieldset>
+
+    {{if .captchaEnabled}}
+    <altcha-widget challenge="/_/api/altcha/challenge" type="checkbox" auto="onfocus"
+                   @verified="captchaPayload = $event.detail.payload"
+                   @statechange="if ($event.detail.state === 'unverified') captchaPayload = null"></altcha-widget>
+    {{end}}
 
     <small id="form-error" x-show="error" x-text="error" class="error"></small>
   </form>

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,12 +12,15 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	altcha "github.com/altcha-org/altcha-lib-go/v2"
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	_ "modernc.org/sqlite"
 
+	"github.com/nietaki/grr-fyi/internal/captcha"
 	"github.com/nietaki/grr-fyi/internal/click"
 	"github.com/nietaki/grr-fyi/internal/db"
 	"github.com/nietaki/grr-fyi/internal/env"
@@ -56,7 +60,7 @@ func (s *HandlerTestSuite) SetupTest() {
 	s.clickSvc = click.NewService(clickStore, 100)
 
 	// Create handler
-	s.handler = NewHandler(s.linkSvc, s.clickSvc, "https://grr.fyi/")
+	s.handler = NewHandler(s.linkSvc, s.clickSvc, "https://grr.fyi/", captcha.New("", 5000, 0))
 
 	// Create Echo instance with renderer
 	s.echo = echo.New()
@@ -350,6 +354,172 @@ func (s *HandlerTestSuite) TestCreateLinkEmptyTargetURL() {
 
 		require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	})
+}
+
+// ==================== CAPTCHA TESTS ====================
+
+type CaptchaHandlerTestSuite struct {
+	suite.Suite
+	handler  *Handler
+	linkSvc  *link.Service
+	clickSvc *click.Service
+	conn     *sql.DB
+	echo     *echo.Echo
+	captcha  captcha.Verifier
+}
+
+func (s *CaptchaHandlerTestSuite) SetupTest() {
+	dbPath := filepath.Join(s.T().TempDir(), "test.sqlite")
+	cfg := env.Config{DBPath: dbPath}
+
+	ctx := context.Background()
+	conn, err := db.Open(ctx, cfg)
+	require.NoError(s.T(), err, "Open")
+
+	err = db.Migrate(ctx, conn)
+	require.NoError(s.T(), err, "Migrate")
+
+	s.conn = conn
+
+	linkStore := link.NewStore(conn)
+	txScope := store.NewTxScope(conn)
+	s.linkSvc = link.NewService(linkStore, txScope)
+
+	clickStore := click.NewStore(conn)
+	s.clickSvc = click.NewService(clickStore, 100)
+
+	s.captcha = captcha.New("test-secret", 100, 10*time.Minute)
+
+	s.handler = NewHandler(s.linkSvc, s.clickSvc, "https://grr.fyi/", s.captcha)
+
+	s.echo = echo.New()
+	s.echo.Renderer = NewTemplateForTest()
+}
+
+func (s *CaptchaHandlerTestSuite) TearDownTest() {
+	s.clickSvc.Close()
+	s.conn.Close()
+}
+
+func (s *CaptchaHandlerTestSuite) TestCreateLinkMissingCaptchaPayload() {
+	s.T().Run("returns 422 when captcha is enabled but payload is missing", func(t *testing.T) {
+		reqBody := CreateLinkRequest{
+			TargetURL: "https://example.com",
+		}
+
+		req := httptest.NewRequest(http.MethodPost, "/_/api/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+
+		err := s.handler.CreateLink(c)
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+		var errResp ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errResp)
+		require.NoError(t, err)
+		require.Equal(t, "captcha verification failed", errResp.Error)
+	})
+}
+
+func (s *CaptchaHandlerTestSuite) TestCreateLinkInvalidCaptchaPayload() {
+	s.T().Run("returns 422 for invalid captcha payload", func(t *testing.T) {
+		reqBody := CreateLinkRequest{
+			TargetURL: "https://example.com",
+			Altcha:    "invalid-payload",
+		}
+
+		req := httptest.NewRequest(http.MethodPost, "/_/api/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+
+		err := s.handler.CreateLink(c)
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	})
+}
+
+func (s *CaptchaHandlerTestSuite) TestCreateLinkValidCaptchaPayload() {
+	s.T().Run("creates link with valid captcha payload", func(t *testing.T) {
+		challengeJSON, err := s.captcha.NewChallenge()
+		require.NoError(t, err)
+
+		var challenge altcha.Challenge
+		err = json.Unmarshal(challengeJSON, &challenge)
+		require.NoError(t, err)
+
+		solution, err := altcha.SolveChallenge(altcha.SolveChallengeOptions{
+			Challenge: challenge,
+			DeriveKey: altcha.DeriveKeyPBKDF2(),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, solution)
+
+		payload := altcha.Payload{
+			Challenge: challenge,
+			Solution:  *solution,
+		}
+		payloadJSON, err := json.Marshal(payload)
+		require.NoError(t, err)
+		payloadB64 := base64.StdEncoding.EncodeToString(payloadJSON)
+
+		reqBody := CreateLinkRequest{
+			TargetURL: "https://example.com",
+			Altcha:    payloadB64,
+		}
+
+		req := httptest.NewRequest(http.MethodPost, "/_/api/create_link", bytes.NewReader(mustMarshal(t, reqBody)))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+
+		err = s.handler.CreateLink(c)
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusCreated, rec.Code)
+	})
+}
+
+func (s *CaptchaHandlerTestSuite) TestAltchaChallengeEndpoint() {
+	s.T().Run("returns valid challenge JSON when captcha is enabled", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/_/api/altcha/challenge", nil)
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+
+		err := s.handler.AltchaChallenge(c)
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+
+		var challenge altcha.Challenge
+		err = json.Unmarshal(rec.Body.Bytes(), &challenge)
+		require.NoError(t, err)
+		require.NotEmpty(t, challenge.Signature)
+		require.NotEmpty(t, challenge.Parameters.Algorithm)
+	})
+}
+
+func (s *CaptchaHandlerTestSuite) TestAltchaChallengeEndpointDisabled() {
+	s.T().Run("returns 404 when captcha is disabled", func(t *testing.T) {
+		disabledHandler := NewHandler(s.linkSvc, s.clickSvc, "https://grr.fyi/", captcha.New("", 5000, 0))
+
+		req := httptest.NewRequest(http.MethodGet, "/_/api/altcha/challenge", nil)
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+
+		err := disabledHandler.AltchaChallenge(c)
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusNotFound, rec.Code)
+	})
+}
+
+func TestCaptchaHandlerTestSuite(t *testing.T) {
+	suite.Run(t, new(CaptchaHandlerTestSuite))
 }
 
 // ==================== SLUG AVAILABILITY TESTS ====================

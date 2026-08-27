@@ -86,6 +86,9 @@ For a new `CreateLink` function:
 | `REPLICATION_ENABLED` | `false` | Set `true` to enable Litestream WAL replication |
 | `PPROF_ENABLED` | `false` | Set `true` to enable `/debug/pprof/*` endpoints |
 | `LOG_LEVEL` | | Set `debug` for verbose logging |
+| `ALTCHA_SECRET` | empty | HMAC secret for ALTCHA captcha. Empty = captcha disabled |
+| `ALTCHA_COST` | `5000` | PBKDF2 iterations for ALTCHA challenge |
+| `ALTCHA_EXPIRY_MINUTES` | `10` | Challenge expiry time in minutes |
 
 ## Versions
 
