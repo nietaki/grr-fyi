@@ -76,6 +76,36 @@ run: build
 run-replicated: build
 	REPLICATION_ENABLED=true SITE_URL=http://localhost:30666/ go run main.go
 
+.PHONY: run-pprof
+run-pprof: build
+	PPROF_ENABLED=true SITE_URL=http://localhost:30666/ go run main.go
+
+.PHONY: profile-cpu
+profile-cpu:
+	@echo "Collecting 30s CPU profile..."
+	@curl -s -o /tmp/cpu.prof "http://localhost:30666/debug/pprof/profile?seconds=30"
+	@echo "Opening flamegraph..."
+	@go tool pprof -http=:30669 /tmp/cpu.prof
+
+.PHONY: profile-heap
+profile-heap:
+	@echo "Collecting heap profile..."
+	@curl -s -o /tmp/heap.prof "http://localhost:30666/debug/pprof/heap"
+	@echo "Opening heap profile..."
+	@go tool pprof -http=:30669 /tmp/heap.prof
+
+.PHONY: profile-goroutine
+profile-goroutine:
+	@echo "Goroutine count:"
+	@curl -s "http://localhost:30666/debug/pprof/goroutine?debug=1" | grep "^goroutine" | wc -l
+	@echo ""
+	@echo "First 20 goroutines:"
+	@curl -s "http://localhost:30666/debug/pprof/goroutine?debug=1" | head -50
+
+.PHONY: pprof-shell
+pprof-shell:
+	go tool pprof http://localhost:30666/debug/pprof/profile?seconds=30
+
 .PHONY: clean
 clean:
 	rm ./grr-fyi || true

@@ -7,7 +7,17 @@ make check        # goimports + coverage + vet + staticcheck (run before committ
 make test         # go test ./...
 make coverage     # tests with coverage report
 make run          # build and run (server on :30666)
+make run-pprof    # build and run with pprof endpoints enabled
 make build        # go build
+```
+
+### Profiling (requires `make run-pprof` running in another terminal)
+
+```bash
+make profile-cpu        # Collect 30s CPU profile, open flamegraph on :30669
+make profile-heap       # Collect heap profile, open on :30669
+make profile-goroutine  # Show goroutine count and first 20 stacks
+make pprof-shell        # Interactive pprof shell (CPU, 30s)
 ```
 
 ## Architecture
@@ -16,7 +26,7 @@ make build        # go build
 - **internal/db**: SQLite connection + goose migrations (embedded from `internal/db/migrations/`)
 - **internal/replication**: Litestream library-mode WAL replication
 - **internal/server**: Echo v5 web server, templates in `templates/`, views in `views/`
-- **internal/env**: Config via env vars (`SERVER_PORT`, `DB_PATH`, `LITESTREAM_REPLICA_URL`, `REPLICATION_ENABLED`, `LOG_LEVEL`)
+- **internal/env**: Config via env vars (`SERVER_PORT`, `DB_PATH`, `LITESTREAM_REPLICA_URL`, `REPLICATION_ENABLED`, `PPROF_ENABLED`, `LOG_LEVEL`)
 - **internal/site**: Site config from `priv/site.yml`
 
 ## Critical Constraints
@@ -74,6 +84,7 @@ For a new `CreateLink` function:
 | `DB_PATH` | `db/filedb.sqlite` | |
 | `LITESTREAM_REPLICA_URL` | empty | Empty = local `db/litestream/` dir; set `s3://...` for object store |
 | `REPLICATION_ENABLED` | `false` | Set `true` to enable Litestream WAL replication |
+| `PPROF_ENABLED` | `false` | Set `true` to enable `/debug/pprof/*` endpoints |
 | `LOG_LEVEL` | | Set `debug` for verbose logging |
 
 ## Versions

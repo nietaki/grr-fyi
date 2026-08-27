@@ -2,31 +2,37 @@
 
 ## TODO
 
-- [ ] partials / general layout
-- [ ] altcha
 - [x] modernc sqlite
 - [x] litestream
+- [x] partials / general layout
+- [x] S3 / scaleway object storage replication
+- [ ] altcha
 
 ## URL Shortener Data Model
 
 ### Schema Overview
 
-Three tables in `internal/db/migrations/00002_url_shortener.sql`:
+Migrations in `internal/db/migrations/`:
 
-- **`links`** - The core aggregate: slug, target_url, claim_key_hash, timestamps
-- **`clicks`** - Async click tracking with ip_hash, referrer, country (nullable)
-- **`slug_sequence`** - Singleton table (id=1) tracking the next auto-slug value
+- **`00001_init.sql`** - Creates the `meta` table for key-value storage
+- **`00002_url_shortener.sql`** - Core URL shortener tables:
+  - **`links`** - The core aggregate: slug, target_url, claim_key_hash, timestamps
+  - **`clicks`** - Async click tracking with ip_hash, referrer, country (nullable)
+  - **`slug_sequence`** - Singleton table (id=1) tracking the next auto-slug value
+- **`00003_clicks_composite_index.sql`** - Composite index on clicks(link_id, ip_hash) for distinct IP queries
 
 ### Dynamic Slug Length
 
-Early links get shorter slugs, later ones get longer. We use **sequential base62 encoding**:
+Early links get shorter slugs, later ones get longer. We use **sequential base64 encoding**:
 
-- `slug_sequence.next_value` starts at 0
-- ID 0 → `a`, ID 1 → `b`, ... ID 61 → `9`, ID 62 → `ba`, etc.
-- Base62 charset: `a-z`, `A-Z`, `0-9` (62 characters)
+- `slug_sequence.next_value` starts at 262144 (ensures minimum 4-character slugs)
+- ID 262144 → first 4-char slug, ID 262145 → next, etc.
+- Base64 charset: `9hZPFa2KlLX6rTwJkHItzxyYs0Vd4bfAMUQGmvpCjRuoDieO5c7nNqWE38gS1B-_` (64 characters, shuffled)
 - Each new link increments the sequence
 
 **Why not random?** Sequential encoding is deterministic, collision-free, and naturally produces short slugs early. The tradeoff is that someone could estimate total link count by decoding slugs, but this is acceptable for our use case.
+
+**Why start at 262144?** This ensures all auto-generated slugs are at least 4 characters long, avoiding very short slugs that might be confusing or easily guessable.
 
 ### Custom Slugs
 
@@ -42,10 +48,10 @@ Custom slugs don't interfere with the sequence. The sequence only advances for a
 
 No user accounts. Instead, each link has a **claim key** for edit/revoke operations:
 
-- **Generation**: 8 random bytes → base62 encoded (~11 characters)
-- **Storage**: bcrypt-hashed before storing in `claim_key_hash`
+- **Generation**: 8 random bytes → base64 encoded (variable length, max ~11 characters)
+- **Storage**: SHA-256 hashed (hex-encoded) before storing in `claim_key_hash`
 - **Return**: Plaintext shown once in `CreateResponse.ClaimKey`
-- **Verification**: `bcrypt.CompareHashAndPassword(stored_hash, submitted_key)`
+- **Verification**: `sha256.Sum256(submitted_key)` compared to stored hash
 
 **Why hash?** If the database is compromised, attackers can't forge claim keys. Like passwords: verify without storing the secret.
 
@@ -77,13 +83,18 @@ Clicks are recorded asynchronously to avoid adding latency to redirects:
 - `Create(ctx, CreateRequest) (*CreateResponse, error)` - Create link with custom or auto slug
 - `Resolve(ctx, slug) (*Link, error)` - Get active link (returns `ErrNotFound`/`ErrRevoked`)
 - `Get(ctx, slug) (*Link, error)` - Get any link including revoked (for edit page)
+- `GetWithClaimKey(ctx, slug, claimKey) (*Link, error)` - Get link and verify claim key
+- `SlugExists(ctx, slug) (bool, error)` - Check if slug is taken (includes revoked links)
 - `Update(ctx, slug, claimKey, newTarget) error` - Update target URL
 - `Revoke(ctx, slug, claimKey) error` - Mark link as revoked
 
 **`internal/click.Service`**:
 - `Record(ctx, Info) error` - Enqueue click (non-blocking, drops if full)
 - `Count(ctx, linkID) (int64, error)` - Aggregate count from clicks table
+- `CountDistinctIPs(ctx, linkID) (int64, error)` - Count unique IP hashes
+- `Stats(ctx, linkID) (*ClickStats, error)` - Get total clicks and distinct IPs in one query
 - `Close()` - Graceful shutdown, flush remaining clicks
+- `Flush()` - Wait for all pending clicks to be written
 
 ## JSON API
 
@@ -182,6 +193,28 @@ curl -X POST https://grr.fyi/_/api/slug_availability \
 
 ---
 
+#### `GET /_/edit_link/:slug?claim_key=...` — Edit link page
+
+Displays the edit page for a link after verifying the claim key. Shows the target URL, short URL, edit page URL, and click statistics (total clicks and distinct IPs).
+
+**Query Parameters:**
+- `claim_key` — The claim key for the link (required)
+
+**Response:**
+- `200 OK` — Edit page rendered (HTML)
+- `400 Bad Request` — Missing claim key
+- `401 Unauthorized` — Invalid claim key
+- `404 Not Found` — Slug does not exist
+- `410 Gone` — Link has been revoked
+
+**Example:**
+```bash
+curl "https://grr.fyi/_/edit_link/demo?claim_key=aB3xY9kL2mN"
+# Returns HTML edit page with link details and stats
+```
+
+---
+
 ### CORS
 
 All POST endpoints (`/_/api/create_link`, `/_/api/slug_availability`) support CORS with `Access-Control-Allow-Origin: *`. This allows the API to be called from any domain.
@@ -222,7 +255,7 @@ All errors follow a consistent JSON format:
 
 The app stores data in a single SQLite file (`DB_PATH`, default `db/filedb.sqlite`)
 and replicates it in the background with [litestream](https://github.com/benbjohnson/litestream)
-in **library mode**. When `LITESTREAM_REPLICA` is set (e.g. `s3://bucket/path`) the
+in **library mode**. When `LITESTREAM_REPLICA_URL` is set (e.g. `s3://bucket/path`) the
 replica target is that object store; when it is empty a local `litestream/` directory
 next to the database is used instead, so `make run` works with no object store.
 
@@ -236,6 +269,21 @@ Wiring lives in `internal/replication/replication.go` (store lifecycle),
   the same file and watches the WAL; it does not wrap the app's connection.
 - We use the pure-Go driver `modernc.org/sqlite` because litestream uses it internally.
   Mixing it with a cgo driver (e.g. `mattn/go-sqlite3`) causes POSIX lock conflicts.
+
+### Performance PRAGMAs
+
+The app connection uses several PRAGMAs to optimize SQLite performance (set in `internal/db/db.go`):
+
+| PRAGMA | Value | Purpose |
+| --- | --- | --- |
+| `journal_mode` | `WAL` | Write-ahead logging for concurrent reads/writes |
+| `synchronous` | `NORMAL` | Reduced fsync calls (safe with WAL mode) |
+| `cache_size` | `-64000` | 64MB page cache (negative = KB) |
+| `mmap_size` | `268435456` | 256MB memory-mapped I/O |
+| `temp_store` | `MEMORY` | Store temp tables in memory |
+| `foreign_keys` | `ON` | Enforce foreign key constraints |
+| `wal_autocheckpoint` | `0` | Disabled (litestream controls checkpointing) |
+| `busy_timeout` | `5000` | Wait 5s for locks instead of failing immediately |
 
 ### Key types
 
@@ -271,7 +319,7 @@ The knobs we rely on (defaults in parentheses), from `store.go` / `db.go` / `rep
 `main.go` → `replication.Start` (`internal/replication/replication.go`):
 
 1. `litestream.NewDB(DB_PATH)` — build the DB struct (file not opened yet).
-2. Build the replica client: `NewReplicaClientFromURL(LITESTREAM_REPLICA)` when set,
+2. Build the replica client: `NewReplicaClientFromURL(LITESTREAM_REPLICA_URL)` when set,
    else `file.NewReplicaClient(<db dir>/litestream)`.
 3. `NewReplicaWithClient(db, client)` and wire it onto `db.Replica`.
 4. `client.Init(ctx)` — idempotent backend init.
@@ -355,4 +403,8 @@ keeping at least one snapshot.
 
 Keeping a single writer (`replicaCount: 1`) matters: two replicas writing the same file would
 fight over the WAL.
+
+## Site Configuration
+
+Site-specific settings (name, URL, etc.) are loaded from `priv/site.yml` (configurable via `SITE_FILE_PATH`). Environment variables prefixed with `SITE_` override YAML values — for example, `SITE_URL=https://example.com/` overrides the `url` field. The site config is accessible in templates via the `site` function (e.g., `{{ site "url" }}`).
 

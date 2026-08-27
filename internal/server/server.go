@@ -4,6 +4,8 @@ import (
 	"context"
 	"html/template"
 	"io"
+	"net/http"
+	"net/http/pprof"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -95,9 +97,28 @@ func Start(ctx context.Context, cfg env.Config, linkSvc *link.Service, clickSvc 
 		return c.Render(200, "index.html", map[string]any{})
 	})
 
+	// Enable pprof endpoints for performance profiling when PPROF_ENABLED=true
+	if cfg.PprofEnabled {
+		registerPprof(e)
+	}
+
 	portSpec := ":" + cfg.ServerPort
 	sc := echo.StartConfig{Address: portSpec}
 	if err := sc.Start(ctx, e); err != nil {
 		e.Logger.Error("failed to start server", "error", err)
 	}
+}
+
+func registerPprof(e *echo.Echo) {
+	e.GET("/debug/pprof", echo.WrapHandler(http.HandlerFunc(pprof.Index)))
+	e.GET("/debug/pprof/cmdline", echo.WrapHandler(http.HandlerFunc(pprof.Cmdline)))
+	e.GET("/debug/pprof/profile", echo.WrapHandler(http.HandlerFunc(pprof.Profile)))
+	e.GET("/debug/pprof/symbol", echo.WrapHandler(http.HandlerFunc(pprof.Symbol)))
+	e.GET("/debug/pprof/trace", echo.WrapHandler(http.HandlerFunc(pprof.Trace)))
+	e.GET("/debug/pprof/allocs", echo.WrapHandler(http.HandlerFunc(pprof.Index)))
+	e.GET("/debug/pprof/block", echo.WrapHandler(http.HandlerFunc(pprof.Index)))
+	e.GET("/debug/pprof/goroutine", echo.WrapHandler(http.HandlerFunc(pprof.Index)))
+	e.GET("/debug/pprof/heap", echo.WrapHandler(http.HandlerFunc(pprof.Index)))
+	e.GET("/debug/pprof/mutex", echo.WrapHandler(http.HandlerFunc(pprof.Index)))
+	e.GET("/debug/pprof/threadcreate", echo.WrapHandler(http.HandlerFunc(pprof.Index)))
 }

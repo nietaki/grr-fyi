@@ -9,6 +9,7 @@ type Config struct {
 	ReplicaUrl         string `env:"LITESTREAM_REPLICA_URL" envDefault:""`
 	ReplicationEnabled bool   `env:"REPLICATION_ENABLED" envDefault:"false"`
 	SiteFilePath       string `env:"SITE_FILE_PATH" envDefault:"priv/site.yml"`
+	PprofEnabled       bool   `env:"PPROF_ENABLED" envDefault:"false"`
 }
 
 var cfg Config
