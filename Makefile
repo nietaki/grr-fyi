@@ -69,7 +69,7 @@ build:
 	go build
 
 .PHONY: run
-run: build
+run: build remove-litestream-cache
 	go run main.go
 
 .PHONY: run-pprof

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/benbjohnson/litestream"
 	"github.com/stretchr/testify/require"
@@ -177,6 +178,35 @@ func (s *ReplicationTestSuite) TestMetaPath() {
 		fi, err = os.Stat(ltxDir)
 		require.NoError(t, err, "ltx directory missing in custom meta path")
 		require.True(t, fi.IsDir(), "expected %s to be a directory", ltxDir)
+	})
+}
+
+func (s *ReplicationTestSuite) TestWaitForInitialSync() {
+	s.T().Run("returns immediately when no replica data exists", func(t *testing.T) {
+		ctx := context.Background()
+
+		store, err := Start(ctx, s.cfg)
+		require.NoError(t, err, "Start")
+		defer Close(store)
+
+		db := store.DBs()[0]
+		status, err := db.SyncStatus(ctx)
+		require.NoError(t, err, "SyncStatus")
+		require.Equal(t, uint64(0), uint64(status.LocalTXID), "local TXID should be 0")
+		require.Equal(t, uint64(0), uint64(status.RemoteTXID), "remote TXID should be 0")
+	})
+}
+
+func (s *ReplicationTestSuite) TestSnapshotSettings() {
+	s.T().Run("sets snapshot interval to 6h and retention to 168h", func(t *testing.T) {
+		ctx := context.Background()
+
+		store, err := Start(ctx, s.cfg)
+		require.NoError(t, err, "Start")
+		defer Close(store)
+
+		require.Equal(t, 6*time.Hour, store.SnapshotInterval, "snapshot interval should be 6h")
+		require.Equal(t, 7*24*time.Hour, store.SnapshotRetention, "snapshot retention should be 168h")
 	})
 }
 
