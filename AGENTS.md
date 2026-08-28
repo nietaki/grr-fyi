@@ -91,6 +91,16 @@ For a new `CreateLink` function:
 | `ALTCHA_COST` | `5000` | PBKDF2 iterations for ALTCHA challenge |
 | `ALTCHA_EXPIRY_MINUTES` | `10` | Challenge expiry time in minutes |
 
+### Environment Configuration Files
+
+The project uses direnv with a layered configuration approach:
+
+- **`.envrc`** — Main environment configuration (committed to git). Sets non-sensitive defaults like `REPLICATION_ENABLED`, `SITE_URL`, and `LITESTREAM_REPLICA_URL`. Sources `.envrc-priv` if it exists.
+- **`.envrc-priv-sample`** — Template showing what sensitive credentials should be placed in `.envrc-priv` (committed to git). Use this as a reference for required secrets.
+- **`.envrc-priv`** — Actual sensitive credentials like API keys and secrets (gitignored, NOT in repository).
+
+**IMPORTANT**: Agents should NEVER read or write `.envrc-priv`. Only reference `.envrc-priv-sample` when documenting required environment variables or helping users configure their setup.
+
 ## Versions
 
 - App version: `APP_VERSION.txt`

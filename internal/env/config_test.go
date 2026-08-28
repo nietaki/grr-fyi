@@ -49,6 +49,7 @@ func (s *ConfigTestSuite) TestGet() {
 
 func (s *ConfigTestSuite) TestReplicationEnabled() {
 	s.T().Run("defaults to false", func(t *testing.T) {
+		t.Setenv("REPLICATION_ENABLED", "")
 		cfg := Load()
 		require.False(t, cfg.ReplicationEnabled)
 	})
