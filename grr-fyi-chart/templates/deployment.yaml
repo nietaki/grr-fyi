@@ -6,6 +6,8 @@ metadata:
     {{- include "grr-fyi-chart.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "grr-fyi-chart.selectorLabels" . | nindent 6 }}
