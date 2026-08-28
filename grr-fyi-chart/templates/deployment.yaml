@@ -42,7 +42,7 @@ spec:
             - name: SERVER_PORT
               value: {{ .Values.containerPort | quote }}
             - name: DB_PATH
-              value: /data/filedb.sqlite
+              value: /data/grr.sqlite
             - name: LITESTREAM_META_PATH
               value: /litestream-meta
             - name: LOG_LEVEL

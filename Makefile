@@ -115,7 +115,7 @@ remove-litestream-cache:
 .PHONY: remove-db
 remove-db:
 	@echo "Removing database files..."
-	rm -f ./db/filedb.sqlite ./db/filedb.sqlite-shm ./db/filedb.sqlite-wal
+	rm -f ./db/grr.sqlite ./db/grr.sqlite-shm ./db/grr.sqlite-wal
 
 .PHONY: build-all
 build-all:

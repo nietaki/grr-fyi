@@ -253,7 +253,7 @@ All errors follow a consistent JSON format:
 
 ## SQLite persistence & Litestream replication
 
-The app stores data in a single SQLite file (`DB_PATH`, default `db/filedb.sqlite`)
+The app stores data in a single SQLite file (`DB_PATH`, default `db/grr.sqlite`)
 and replicates it in the background with [litestream](https://github.com/benbjohnson/litestream)
 in **library mode**. When `LITESTREAM_REPLICA_URL` is set (e.g. `s3://bucket/path`) the
 replica target is that object store; when it is empty a local `litestream/` directory
