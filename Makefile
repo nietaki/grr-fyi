@@ -70,11 +70,7 @@ build:
 
 .PHONY: run
 run: build
-	SITE_URL=http://localhost:30666/ go run main.go
-
-.PHONY: run-replicated
-run-replicated: build
-	REPLICATION_ENABLED=true SITE_URL=http://localhost:30666/ go run main.go
+	go run main.go
 
 .PHONY: run-pprof
 run-pprof: build
@@ -110,6 +106,16 @@ pprof-shell:
 clean:
 	rm ./grr-fyi || true
 	rm -f $(BUILD_DIR)/grr-fyi* || true
+
+.PHONY: remove-litestream-cache
+remove-litestream-cache:
+	@echo "Removing Litestream cache..."
+	@find ./litestream-cache -mindepth 1 -not -name .gitignore -exec rm -rf {} + 2>/dev/null || true
+
+.PHONY: remove-db
+remove-db:
+	@echo "Removing database files..."
+	rm -f ./db/filedb.sqlite ./db/filedb.sqlite-shm ./db/filedb.sqlite-wal
 
 .PHONY: build-all
 build-all:

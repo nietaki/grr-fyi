@@ -29,7 +29,9 @@ COPY priv ./priv
 
 
 VOLUME /data
+VOLUME /litestream-meta
 
 ENV SERVER_PORT=80
 ENV DB_PATH=/data/filedb.sqlite
+ENV LITESTREAM_META_PATH=/litestream-meta
 ENTRYPOINT ["/usr/local/app/grr-fyi"]

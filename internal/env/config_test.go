@@ -103,6 +103,19 @@ func (s *ConfigTestSuite) TestAltchaCustomValues() {
 	})
 }
 
+func (s *ConfigTestSuite) TestLitestreamMetaPath() {
+	s.T().Run("defaults to ./litestream-cache", func(t *testing.T) {
+		cfg := Load()
+		require.Equal(t, "./litestream-cache", cfg.LitestreamMetaPath)
+	})
+
+	s.T().Run("can be set to custom path", func(t *testing.T) {
+		t.Setenv("LITESTREAM_META_PATH", "/custom/path")
+		cfg := Load()
+		require.Equal(t, "/custom/path", cfg.LitestreamMetaPath)
+	})
+}
+
 func TestConfigTestSuite(t *testing.T) {
 	suite.Run(t, new(ConfigTestSuite))
 }

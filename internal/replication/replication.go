@@ -21,6 +21,9 @@ import (
 // `make run` working without any object store.
 func Start(ctx context.Context, cfg env.Config) (*litestream.Store, error) {
 	db := litestream.NewDB(cfg.DBPath)
+	if cfg.LitestreamMetaPath != "" {
+		db.SetMetaPath(cfg.LitestreamMetaPath)
+	}
 
 	client, err := newReplicaClient(cfg)
 	if err != nil {
@@ -54,7 +57,7 @@ func Start(ctx context.Context, cfg env.Config) (*litestream.Store, error) {
 		return nil, fmt.Errorf("open litestream store: %w", err)
 	}
 
-	slog.Info("litestream replication started", "db", cfg.DBPath, "replica", client.Type())
+	slog.Info("litestream replication started", "db", cfg.DBPath, "meta_path", db.MetaPath(), "replica", client.Type())
 	return store, nil
 }
 

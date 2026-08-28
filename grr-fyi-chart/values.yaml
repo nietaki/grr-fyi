@@ -65,14 +65,21 @@ readinessProbe:
     port: http
 
 # Additional volumes on the output Deployment definition.
-volumes: []
+# The litestream-meta volume is used for the Litestream replication cache.
+# It is ephemeral (emptyDir) so the cache is cleared on pod restart, which
+# prevents stale cache issues when switching replicas.
+volumes:
+  - name: litestream-meta
+    emptyDir: {}
 # - name: foo
 #   secret:
 #     secretName: mysecret
 #     optional: false
 
 # Additional volumeMounts on the output Deployment definition.
-volumeMounts: []
+volumeMounts:
+  - name: litestream-meta
+    mountPath: /litestream-meta
 # - name: foo
 #   mountPath: "/etc/foo"
 #   readOnly: true

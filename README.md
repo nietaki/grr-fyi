@@ -262,6 +262,21 @@ next to the database is used instead, so `make run` works with no object store.
 Wiring lives in `internal/replication/replication.go` (store lifecycle),
 `internal/db/db.go` (app connection + schema), and `main.go` (startup/shutdown order).
 
+### Database and cache separation
+
+Litestream maintains a local cache of LTX files (the replication staging area) separate
+from the database file itself. By default, this cache is stored at `LITESTREAM_META_PATH`
+(default `./litestream-cache`), which is **separate from the database directory**.
+
+This separation enables different storage strategies in production:
+- **Database on persistent storage** (PVC) — survives pod restarts, fast startup
+- **Cache on ephemeral storage** (emptyDir) — cleared on pod restart, prevents stale cache issues
+
+To clear the local cache:
+```bash
+make clear-replication-cache
+```
+
 ### Why library mode
 
 - The application opens the database with an ordinary `database/sql` connection in

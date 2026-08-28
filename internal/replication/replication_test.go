@@ -138,6 +138,48 @@ func (s *ReplicationTestSuite) TestClose() {
 	})
 }
 
+func (s *ReplicationTestSuite) TestMetaPath() {
+	s.T().Run("uses custom meta path when configured", func(t *testing.T) {
+		ctx := context.Background()
+		tmpDir := s.T().TempDir()
+		customMetaPath := filepath.Join(tmpDir, "custom-meta")
+
+		cfg := env.Config{
+			DBPath:             filepath.Join(tmpDir, "app.sqlite"),
+			LitestreamMetaPath: customMetaPath,
+		}
+
+		store, err := Start(ctx, cfg)
+		require.NoError(t, err, "Start")
+
+		appDB, err := openAppDB(cfg.DBPath)
+		require.NoError(t, err, "open app db")
+
+		_, err = appDB.Exec(`CREATE TABLE kv (k TEXT PRIMARY KEY, v TEXT)`)
+		require.NoError(t, err, "create table")
+
+		_, err = appDB.Exec(`INSERT INTO kv (k, v) VALUES ('test', 'value')`)
+		require.NoError(t, err, "insert")
+
+		err = appDB.Close()
+		require.NoError(t, err, "close app db")
+
+		_, err = store.SyncDB(ctx, cfg.DBPath, true)
+		require.NoError(t, err, "sync")
+
+		Close(store)
+
+		fi, err := os.Stat(customMetaPath)
+		require.NoError(t, err, "custom meta path missing")
+		require.True(t, fi.IsDir(), "expected %s to be a directory", customMetaPath)
+
+		ltxDir := filepath.Join(customMetaPath, "ltx")
+		fi, err = os.Stat(ltxDir)
+		require.NoError(t, err, "ltx directory missing in custom meta path")
+		require.True(t, fi.IsDir(), "expected %s to be a directory", ltxDir)
+	})
+}
+
 func TestReplicationTestSuite(t *testing.T) {
 	suite.Run(t, new(ReplicationTestSuite))
 }

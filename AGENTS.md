@@ -83,6 +83,7 @@ For a new `CreateLink` function:
 | `SERVER_PORT` | `30666` | |
 | `DB_PATH` | `db/filedb.sqlite` | |
 | `LITESTREAM_REPLICA_URL` | empty | Empty = local `db/litestream/` dir; set `s3://...` for object store |
+| `LITESTREAM_META_PATH` | `./litestream-cache` | Litestream local cache directory (separate from DB) |
 | `REPLICATION_ENABLED` | `false` | Set `true` to enable Litestream WAL replication |
 | `PPROF_ENABLED` | `false` | Set `true` to enable `/debug/pprof/*` endpoints |
 | `LOG_LEVEL` | | Set `debug` for verbose logging |

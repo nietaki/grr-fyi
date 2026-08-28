@@ -7,6 +7,7 @@ type Config struct {
 	LogFormat          string `env:"LOG_FORMAT" envDefault:"text"`
 	DBPath             string `env:"DB_PATH" envDefault:"db/filedb.sqlite"`
 	ReplicaUrl         string `env:"LITESTREAM_REPLICA_URL" envDefault:""`
+	LitestreamMetaPath string `env:"LITESTREAM_META_PATH" envDefault:"./litestream-cache"`
 	ReplicationEnabled bool   `env:"REPLICATION_ENABLED" envDefault:"false"`
 	SiteFilePath       string `env:"SITE_FILE_PATH" envDefault:"priv/site.yml"`
 	PprofEnabled       bool   `env:"PPROF_ENABLED" envDefault:"false"`
