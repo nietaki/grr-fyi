@@ -25,13 +25,72 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      serviceAccountName: {{ include "grr-fyi-chart.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
             - name: SERVER_PORT
               value: {{ .Values.containerPort | quote }}
+            - name: DB_PATH
+              value: /data/filedb.sqlite
+            - name: LITESTREAM_META_PATH
+              value: /litestream-meta
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: LOG_FORMAT
+              value: {{ .Values.logFormat | quote }}
+            - name: REPLICATION_ENABLED
+              value: {{ .Values.replication.enabled | quote }}
+            - name: SITE_FILE_PATH
+              value: {{ .Values.siteFilePath | quote }}
+            - name: PPROF_ENABLED
+              value: {{ .Values.pprofEnabled | quote }}
+            - name: ALTCHA_COST
+              value: {{ .Values.captcha.cost | quote }}
+            - name: ALTCHA_EXPIRY_MINUTES
+              value: {{ .Values.captcha.expiryMinutes | quote }}
+            {{- if .Values.siteUrl }}
+            - name: SITE_URL
+              value: {{ .Values.siteUrl | quote }}
+            {{- end }}
+            {{- if or .Values.captcha.secret .Values.existingSecret }}
+            - name: ALTCHA_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "grr-fyi-chart.secretName" . }}
+                  key: ALTCHA_SECRET
+            {{- end }}
+            {{- if or .Values.replication.replicaURL .Values.existingSecret }}
+            - name: LITESTREAM_REPLICA_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "grr-fyi-chart.secretName" . }}
+                  key: LITESTREAM_REPLICA_URL
+            {{- end }}
+            {{- if or .Values.replication.accessKeyID .Values.existingSecret }}
+            - name: LITESTREAM_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "grr-fyi-chart.secretName" . }}
+                  key: LITESTREAM_ACCESS_KEY_ID
+            {{- end }}
+            {{- if or .Values.replication.secretAccessKey .Values.existingSecret }}
+            - name: LITESTREAM_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "grr-fyi-chart.secretName" . }}
+                  key: LITESTREAM_SECRET_ACCESS_KEY
+            {{- end }}
             {{- with .Values.env }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -55,14 +114,23 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.volumeMounts }}
           volumeMounts:
+            - name: data
+              mountPath: /data
+            {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
-      {{- with .Values.volumes }}
+            {{- end }}
       volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "grr-fyi-chart.pvcName" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

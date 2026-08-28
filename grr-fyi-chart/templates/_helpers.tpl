@@ -49,3 +49,45 @@ Selector labels
 app.kubernetes.io/name: {{ include "grr-fyi-chart.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "grr-fyi-chart.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
+{{- default (include "grr-fyi-chart.fullname" .) .Values.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.name }}
+{{- end }}
+{{- end }}
+
+{{/*
+Create the name of the secret to use
+*/}}
+{{- define "grr-fyi-chart.secretName" -}}
+{{- if .Values.existingSecret }}
+{{- .Values.existingSecret }}
+{{- else }}
+{{- include "grr-fyi-chart.fullname" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Return true if any secret values are configured (so we know whether to create a Secret)
+*/}}
+{{- define "grr-fyi-chart.hasSecrets" -}}
+{{- if or .Values.captcha.secret .Values.replication.replicaURL .Values.replication.accessKeyID .Values.replication.secretAccessKey }}
+{{- true }}
+{{- end }}
+{{- end }}
+
+{{/*
+PVC name for the data volume
+*/}}
+{{- define "grr-fyi-chart.pvcName" -}}
+{{- if .Values.persistence.existingClaim }}
+{{- .Values.persistence.existingClaim }}
+{{- else }}
+{{- include "grr-fyi-chart.fullname" . }}-data
+{{- end }}
+{{- end }}

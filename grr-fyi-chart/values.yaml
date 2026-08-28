@@ -1,60 +1,64 @@
-# Default values for grr-fyi-chart.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
-# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
 
-# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 image:
   repository: registry.hoplon.net/nietaki/grr-fyi
-  # This sets the pull policy for images.
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
-
-# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []
-
-# This is to override the chart name.
 nameOverride: ""
 fullnameOverride: ""
 
-# Port the container listens on (SERVER_PORT env var)
+logLevel: info
+logFormat: text
+
 containerPort: 30666
 
-# This is for setting Kubernetes Annotations to a Pod.
-# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+siteUrl: ""
+siteFilePath: priv/site.yml
+
+pprofEnabled: false
+
+persistence:
+  enabled: true
+  size: 1Gi
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  existingClaim: ""
+
+replication:
+  enabled: false
+  replicaURL: ""
+  accessKeyID: ""
+  secretAccessKey: ""
+
+captcha:
+  secret: ""
+  cost: 5000
+  expiryMinutes: 10
+
+existingSecret: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
 podAnnotations: {}
-# This is for setting Kubernetes Labels to a Pod.
-# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 podLabels: {}
 
-# This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
+podSecurityContext: {}
+securityContext: {}
+
 service:
-  # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
   type: ClusterIP
-  # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
   port: 80
-  # This sets annotations on the Service object, e.g. metallb.io/loadBalancerIPs: 192.168.1.180
   annotations: {}
-  # This sets the load balancer class, e.g. metallb-class (only meaningful for LoadBalancer services)
   loadBalancerClass: ""
 
 resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
 
-# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
   httpGet:
     path: /
@@ -64,45 +68,17 @@ readinessProbe:
     path: /
     port: http
 
-# Additional volumes on the output Deployment definition.
-# The litestream-meta volume is used for the Litestream replication cache.
-# It is ephemeral (emptyDir) so the cache is cleared on pod restart, which
-# prevents stale cache issues when switching replicas.
 volumes:
   - name: litestream-meta
     emptyDir: {}
-# - name: foo
-#   secret:
-#     secretName: mysecret
-#     optional: false
 
-# Additional volumeMounts on the output Deployment definition.
 volumeMounts:
   - name: litestream-meta
     mountPath: /litestream-meta
-# - name: foo
-#   mountPath: "/etc/foo"
-#   readOnly: true
+
+env: []
+envFrom: []
 
 nodeSelector: {}
-
 tolerations: []
-
 affinity: {}
-
-# Additional environment variables for the container. Entries are standard
-# Kubernetes env objects, so each supports a plain value or valueFrom
-# (e.g. secretKeyRef) for pulling a key from an existing Secret.
-env: []
-# - name: LOG_FORMAT
-#   value: json
-# - name: LITESTREAM_REPLICA_URL
-#   valueFrom:
-#     secretKeyRef:
-#       name: grr-fyi-secrets
-#       key: replica-url
-
-# Bulk-load environment variables from existing Secrets/ConfigMaps.
-envFrom: []
-# - secretRef:
-#     name: grr-fyi-secrets

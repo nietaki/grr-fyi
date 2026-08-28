@@ -423,3 +423,59 @@ fight over the WAL.
 
 Site-specific settings (name, URL, etc.) are loaded from `priv/site.yml` (configurable via `SITE_FILE_PATH`). Environment variables prefixed with `SITE_` override YAML values — for example, `SITE_URL=https://example.com/` overrides the `url` field. The site config is accessible in templates via the `site` function (e.g., `{{ site "url" }}`).
 
+## Helm Chart
+
+The chart lives in `grr-fyi-chart/` and supports production deployments with persistent storage, automatic Secret generation, and configurable replication/captcha settings.
+
+### Testing the chart
+
+```bash
+# Validate chart syntax and structure
+helm lint grr-fyi-chart
+
+# Render templates with default values (creates PVC, no Secret)
+helm template test-release grr-fyi-chart
+
+# Render with secrets to verify Secret generation
+helm template test-release grr-fyi-chart \
+  --set captcha.secret=my-altcha-key \
+  --set replication.enabled=true \
+  --set replication.replicaURL='s3://bucket/path' \
+  --set replication.accessKeyID=AKIA123 \
+  --set replication.secretAccessKey=supersecret \
+  --set logLevel=debug \
+  --set logFormat=json \
+  --set siteUrl='https://grr.fyi/'
+
+# Test persistence disabled (data volume becomes emptyDir)
+helm template test-release grr-fyi-chart \
+  --set persistence.enabled=false
+
+# Test existing external Secret (chart won't create one)
+helm template test-release grr-fyi-chart \
+  --set existingSecret=my-external-secret
+
+# Test existing external PVC (chart won't create one)
+helm template test-release grr-fyi-chart \
+  --set persistence.existingClaim=my-existing-pvc
+```
+
+### Key values
+
+| Value | Default | Purpose |
+|-------|---------|---------|
+| `persistence.enabled` | `true` | Create PVC for SQLite database |
+| `persistence.size` | `1Gi` | PVC size |
+| `persistence.existingClaim` | `""` | Use existing PVC instead of creating one |
+| `replication.enabled` | `false` | Enable Litestream WAL replication |
+| `replication.replicaURL` | `""` | S3 replica URL (stored in Secret) |
+| `replication.accessKeyID` | `""` | S3 access key (stored in Secret) |
+| `replication.secretAccessKey` | `""` | S3 secret key (stored in Secret) |
+| `captcha.secret` | `""` | ALTCHA HMAC secret (stored in Secret, empty = disabled) |
+| `captcha.cost` | `5000` | PBKDF2 iterations |
+| `captcha.expiryMinutes` | `10` | Challenge expiry |
+| `existingSecret` | `""` | Reference external Secret instead of creating one |
+| `logLevel` | `info` | Log level (debug, info, warn, error) |
+| `logFormat` | `text` | Log format (text, json) |
+| `siteUrl` | `""` | Site URL (sets SITE_URL env var) |
+
