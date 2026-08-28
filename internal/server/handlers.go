@@ -73,6 +73,15 @@ func jsonError(c *echo.Context, status int, msg string) error {
 	return c.JSON(status, ErrorResponse{Error: msg})
 }
 
+// renderError renders the error view with the given status code and optional description.
+func renderError(c *echo.Context, status int, description string) error {
+	return c.Render(status, "error.html", map[string]any{
+		"StatusCode":  status,
+		"StatusText":  http.StatusText(status),
+		"Description": description,
+	})
+}
+
 // Redirect handles GET /<slug> requests.
 // It resolves the slug to a target URL and returns a 302 redirect.
 // Click tracking is performed asynchronously via the click service.
@@ -87,17 +96,17 @@ func (h *Handler) Redirect(c *echo.Context) error {
 	// Validate slug format - reject anything that doesn't match the slug pattern
 	// This allows static files (which have extensions like .ico, .css, .js) to be served
 	if err := link.ValidateSlug(slug); err != nil {
-		return c.NoContent(http.StatusNotFound)
+		return renderError(c, http.StatusNotFound, "")
 	}
 
 	ctx := c.Request().Context()
 	foundLink, err := h.linkSvc.Resolve(ctx, slug)
 	if err != nil {
 		if errors.Is(err, link.ErrNotFound) {
-			return c.NoContent(http.StatusNotFound)
+			return renderError(c, http.StatusNotFound, "The requested link could not be found.")
 		}
 		if errors.Is(err, link.ErrRevoked) {
-			return c.NoContent(http.StatusGone)
+			return renderError(c, http.StatusGone, "This link has been revoked.")
 		}
 		return err
 	}
@@ -235,20 +244,20 @@ func (h *Handler) EditLink(c *echo.Context) error {
 		claimKey = c.FormValue("claim_key")
 	}
 	if claimKey == "" {
-		return c.String(http.StatusBadRequest, "claim_key is required")
+		return renderError(c, http.StatusBadRequest, "claim_key is required.")
 	}
 
 	ctx := c.Request().Context()
 	foundLink, err := h.linkSvc.GetWithClaimKey(ctx, slug, claimKey)
 	if err != nil {
 		if errors.Is(err, link.ErrNotFound) {
-			return c.NoContent(http.StatusNotFound)
+			return renderError(c, http.StatusNotFound, "")
 		}
 		if errors.Is(err, link.ErrRevoked) {
-			return c.NoContent(http.StatusGone)
+			return renderError(c, http.StatusGone, "This link has been revoked.")
 		}
 		if errors.Is(err, link.ErrInvalidClaim) {
-			return c.String(http.StatusUnauthorized, "invalid claim key")
+			return renderError(c, http.StatusUnauthorized, "Invalid claim key.")
 		}
 		return err
 	}

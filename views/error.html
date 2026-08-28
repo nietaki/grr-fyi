@@ -1,0 +1,6 @@
+{{define "content"}}
+<article>
+  <h3>{{.StatusCode}}: {{.StatusText}}</h3>
+  {{if .Description}}<p>{{.Description}}</p>{{end}}
+</article>
+{{end}}

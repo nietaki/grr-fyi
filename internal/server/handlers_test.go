@@ -111,6 +111,10 @@ func (s *HandlerTestSuite) TestRedirectNotFound() {
 		require.NoError(t, err)
 
 		require.Equal(t, http.StatusNotFound, rec.Code)
+		body := rec.Body.String()
+		require.Contains(t, body, "404")
+		require.Contains(t, body, "Not Found")
+		require.Contains(t, body, "The requested link could not be found.")
 	})
 }
 
@@ -139,6 +143,10 @@ func (s *HandlerTestSuite) TestRedirectRevoked() {
 		require.NoError(t, err)
 
 		require.Equal(t, http.StatusGone, rec.Code)
+		body := rec.Body.String()
+		require.Contains(t, body, "410")
+		require.Contains(t, body, "Gone")
+		require.Contains(t, body, "This link has been revoked.")
 	})
 }
 
@@ -153,6 +161,8 @@ func (s *HandlerTestSuite) TestRedirectRejectsInvalidSlugs() {
 		require.NoError(t, err)
 
 		require.Equal(t, http.StatusNotFound, rec.Code)
+		body := rec.Body.String()
+		require.Contains(t, body, "404")
 	})
 
 	s.T().Run("returns 404 for slug with underscore", func(t *testing.T) {
@@ -165,6 +175,8 @@ func (s *HandlerTestSuite) TestRedirectRejectsInvalidSlugs() {
 		require.NoError(t, err)
 
 		require.Equal(t, http.StatusNotFound, rec.Code)
+		body := rec.Body.String()
+		require.Contains(t, body, "404")
 	})
 
 	s.T().Run("returns 404 for slug with hyphen", func(t *testing.T) {
@@ -177,6 +189,8 @@ func (s *HandlerTestSuite) TestRedirectRejectsInvalidSlugs() {
 		require.NoError(t, err)
 
 		require.Equal(t, http.StatusNotFound, rec.Code)
+		body := rec.Body.String()
+		require.Contains(t, body, "404")
 	})
 
 	s.T().Run("returns 404 for slug with path-like pattern", func(t *testing.T) {
@@ -189,6 +203,8 @@ func (s *HandlerTestSuite) TestRedirectRejectsInvalidSlugs() {
 		require.NoError(t, err)
 
 		require.Equal(t, http.StatusNotFound, rec.Code)
+		body := rec.Body.String()
+		require.Contains(t, body, "404")
 	})
 }
 
@@ -780,6 +796,8 @@ func (s *HandlerTestSuite) TestEditLinkNotFound() {
 		err := s.handler.EditLink(c)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, rec.Code)
+		body := rec.Body.String()
+		require.Contains(t, body, "404")
 	})
 }
 
@@ -801,6 +819,9 @@ func (s *HandlerTestSuite) TestEditLinkInvalidClaimKey() {
 		err = s.handler.EditLink(c)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusUnauthorized, rec.Code)
+		body := rec.Body.String()
+		require.Contains(t, body, "401")
+		require.Contains(t, body, "Invalid claim key.")
 	})
 }
 
@@ -822,6 +843,9 @@ func (s *HandlerTestSuite) TestEditLinkMissingClaimKey() {
 		err = s.handler.EditLink(c)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, rec.Code)
+		body := rec.Body.String()
+		require.Contains(t, body, "400")
+		require.Contains(t, body, "claim_key is required.")
 	})
 }
 
@@ -885,5 +909,8 @@ func (s *HandlerTestSuite) TestEditLinkRevoked() {
 		err = s.handler.EditLink(c)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusGone, rec.Code)
+		body := rec.Body.String()
+		require.Contains(t, body, "410")
+		require.Contains(t, body, "This link has been revoked.")
 	})
 }
