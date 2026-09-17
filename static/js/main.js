@@ -8,6 +8,9 @@ document.addEventListener('alpine:init', () => {
     customSlug: '',
     loading: false,
     error: null,
+    // Name of the form field the last error refers to ("target_url",
+    // "custom_slug" or null); mirrors ErrorResponse.field from the API.
+    errorField: null,
     captchaPayload: null,
     captchaRequired: false,
 
@@ -18,11 +21,13 @@ document.addEventListener('alpine:init', () => {
     async submit() {
       if (this.captchaRequired && !this.captchaPayload) {
         this.error = 'Please complete the captcha';
+        this.errorField = null;
         return;
       }
 
       this.loading = true;
       this.error = null;
+      this.errorField = null;
 
       try {
         const body = {
@@ -43,9 +48,11 @@ document.addEventListener('alpine:init', () => {
           window.location.href = '/_/edit_link/' + data.slug + '?claim_key=' + data.claim_key;
         } else {
           this.error = data.error;
+          this.errorField = data.field || null;
         }
       } catch {
         this.error = 'Something went wrong';
+        this.errorField = null;
       } finally {
         this.loading = false;
       }

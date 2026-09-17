@@ -5,10 +5,11 @@
       <label>
         URL to shorten
         <input type="url" x-model="targetUrl" placeholder="https://example.com/very-long-url" required
-               :aria-invalid="error ? 'true' : 'false'" aria-describedby="form-error">
+               :aria-invalid="errorField === 'target_url'" aria-describedby="form-error">
       </label>
       <fieldset role="group">
-        <input type="text" x-model="customSlug" placeholder="Custom slug (optional)">
+        <input type="text" x-model="customSlug" placeholder="Custom slug (optional)"
+               :aria-invalid="errorField === 'custom_slug'" aria-describedby="form-error">
         <input type="submit" value="Shorten" :disabled="loading || (captchaRequired && !captchaPayload)">
       </fieldset>
     </fieldset>

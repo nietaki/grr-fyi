@@ -63,14 +63,32 @@ type SlugAvailabilityResponse struct {
 
 // ErrorResponse is the standard JSON error response format
 type ErrorResponse struct {
-	Error string `json:"error"` // human-readable error message
+	Error string `json:"error"`           // human-readable error message
+	Field string `json:"field,omitempty"` // form field at fault, "" if not attributable to one
 }
+
+// Form field identifiers reported in ErrorResponse.Field. They match the JSON
+// property names of CreateLinkRequest so API clients and the browser client
+// agree on which input to highlight.
+const (
+	fieldTargetURL  = "target_url"
+	fieldCustomSlug = "custom_slug"
+)
 
 // Handler methods
 
 // jsonError sends a JSON error response with the given status code and message.
+//
+// It is used for errors that are not attributable to a single form field; see
+// jsonFieldError for validation errors tied to a specific input.
 func jsonError(c *echo.Context, status int, msg string) error {
 	return c.JSON(status, ErrorResponse{Error: msg})
+}
+
+// jsonFieldError sends a JSON error response tagged with the form field at
+// fault (e.g. fieldCustomSlug) so clients can highlight the offending input.
+func jsonFieldError(c *echo.Context, status int, field, msg string) error {
+	return c.JSON(status, ErrorResponse{Error: msg, Field: field})
 }
 
 // renderError renders the error view with the given status code and optional description.
@@ -148,12 +166,12 @@ func (h *Handler) CreateLink(c *echo.Context) error {
 	}
 
 	if err := validateURL(req.TargetURL); err != nil {
-		return jsonError(c, http.StatusUnprocessableEntity, err.Error())
+		return jsonFieldError(c, http.StatusUnprocessableEntity, fieldTargetURL, err.Error())
 	}
 
 	if req.CustomSlug != "" {
 		if err := link.ValidateSlug(req.CustomSlug); err != nil {
-			return jsonError(c, http.StatusUnprocessableEntity, err.Error())
+			return jsonFieldError(c, http.StatusUnprocessableEntity, fieldCustomSlug, err.Error())
 		}
 	}
 
@@ -164,7 +182,7 @@ func (h *Handler) CreateLink(c *echo.Context) error {
 	})
 	if err != nil {
 		if errors.Is(err, link.ErrSlugTaken) {
-			return jsonError(c, http.StatusConflict, "slug already taken")
+			return jsonFieldError(c, http.StatusConflict, fieldCustomSlug, "slug already taken")
 		}
 		return err
 	}
@@ -209,7 +227,7 @@ func (h *Handler) SlugAvailability(c *echo.Context) error {
 
 	// Validate slug
 	if err := link.ValidateSlug(req.Slug); err != nil {
-		return jsonError(c, http.StatusUnprocessableEntity, err.Error())
+		return jsonFieldError(c, http.StatusUnprocessableEntity, fieldCustomSlug, err.Error())
 	}
 
 	ctx := c.Request().Context()

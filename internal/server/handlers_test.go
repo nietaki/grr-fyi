@@ -283,6 +283,8 @@ func (s *HandlerTestSuite) TestCreateLinkInvalidURL() {
 		err = json.Unmarshal(rec.Body.Bytes(), &errResp)
 		require.NoError(t, err)
 		require.NotEmpty(t, errResp.Error)
+		// The offending field is reported so the client can highlight it.
+		require.Equal(t, "target_url", errResp.Field)
 	})
 }
 
@@ -312,6 +314,12 @@ func (s *HandlerTestSuite) TestCreateLinkSlugTaken() {
 		require.NoError(t, err)
 
 		require.Equal(t, http.StatusConflict, rec.Code)
+
+		var errResp ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errResp)
+		require.NoError(t, err)
+		require.Equal(t, "slug already taken", errResp.Error)
+		require.Equal(t, "custom_slug", errResp.Field)
 	})
 }
 
@@ -331,6 +339,11 @@ func (s *HandlerTestSuite) TestCreateLinkInvalidSlug() {
 		require.NoError(t, err)
 
 		require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+
+		var errResp ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errResp)
+		require.NoError(t, err)
+		require.Equal(t, "custom_slug", errResp.Field)
 	})
 }
 
@@ -350,6 +363,8 @@ func (s *HandlerTestSuite) TestCreateLinkMalformedJSON() {
 		err = json.Unmarshal(rec.Body.Bytes(), &errResp)
 		require.NoError(t, err)
 		require.Equal(t, "invalid request body", errResp.Error)
+		// Not attributable to a single field.
+		require.Empty(t, errResp.Field)
 	})
 }
 
@@ -369,6 +384,11 @@ func (s *HandlerTestSuite) TestCreateLinkEmptyTargetURL() {
 		require.NoError(t, err)
 
 		require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+
+		var errResp ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errResp)
+		require.NoError(t, err)
+		require.Equal(t, "target_url", errResp.Field)
 	})
 }
 
@@ -436,6 +456,8 @@ func (s *CaptchaHandlerTestSuite) TestCreateLinkMissingCaptchaPayload() {
 		err = json.Unmarshal(rec.Body.Bytes(), &errResp)
 		require.NoError(t, err)
 		require.Equal(t, "captcha verification failed", errResp.Error)
+		// Captcha failures are not attributable to a form field.
+		require.Empty(t, errResp.Field)
 	})
 }
 
@@ -610,6 +632,11 @@ func (s *HandlerTestSuite) TestSlugAvailabilityInvalidSlug() {
 		require.NoError(t, err)
 
 		require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+
+		var errResp ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errResp)
+		require.NoError(t, err)
+		require.Equal(t, "custom_slug", errResp.Field)
 	})
 }
 
