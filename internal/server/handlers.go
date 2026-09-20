@@ -10,22 +10,25 @@ import (
 	"github.com/nietaki/grr-fyi/internal/captcha"
 	"github.com/nietaki/grr-fyi/internal/click"
 	"github.com/nietaki/grr-fyi/internal/link"
+	"github.com/nietaki/grr-fyi/internal/stats"
 )
 
 type Handler struct {
 	linkSvc  *link.Service
 	clickSvc *click.Service
+	statsSvc *stats.Service
 	siteURL  string
 	captcha  captcha.Verifier
 }
 
-func NewHandler(linkSvc *link.Service, clickSvc *click.Service, siteURL string, captcha captcha.Verifier) *Handler {
+func NewHandler(linkSvc *link.Service, clickSvc *click.Service, statsSvc *stats.Service, siteURL string, captcha captcha.Verifier) *Handler {
 	if !strings.HasSuffix(siteURL, "/") {
 		siteURL += "/"
 	}
 	return &Handler{
 		linkSvc:  linkSvc,
 		clickSvc: clickSvc,
+		statsSvc: statsSvc,
 		siteURL:  siteURL,
 		captcha:  captcha,
 	}
@@ -97,6 +100,26 @@ func renderError(c *echo.Context, status int, description string) error {
 		"StatusCode":  status,
 		"StatusText":  http.StatusText(status),
 		"Description": description,
+	})
+}
+
+// Stats renders the public /_/stats page with aggregate site, runtime,
+// and replication metrics.
+func (h *Handler) Stats(c *echo.Context) error {
+	if h.statsSvc == nil {
+		return renderError(c, http.StatusServiceUnavailable, "Stats are unavailable.")
+	}
+	data, err := h.statsSvc.Page(c.Request().Context())
+	if err != nil {
+		return renderError(c, http.StatusInternalServerError, "Could not compute stats.")
+	}
+	// Render as a map (like the error page) so the shared base template's
+	// optional fields (e.g. captchaEnabled) resolve cleanly.
+	return c.Render(http.StatusOK, "stats.html", map[string]any{
+		"Site":        data.Site,
+		"Runtime":     data.Runtime,
+		"Replication": data.Replication,
+		"GeneratedAt": data.GeneratedAt,
 	})
 }
 

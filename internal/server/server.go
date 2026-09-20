@@ -15,8 +15,10 @@ import (
 	"github.com/nietaki/grr-fyi/internal/captcha"
 	"github.com/nietaki/grr-fyi/internal/click"
 	"github.com/nietaki/grr-fyi/internal/env"
+	"github.com/nietaki/grr-fyi/internal/format"
 	"github.com/nietaki/grr-fyi/internal/link"
 	"github.com/nietaki/grr-fyi/internal/site"
+	"github.com/nietaki/grr-fyi/internal/stats"
 )
 
 // TODO: funcMap
@@ -25,10 +27,19 @@ type Template struct {
 	viewsPath string
 }
 
-func NewTemplate(siteConf site.SiteConfig) *Template {
-	funcs := template.FuncMap{
-		"site": func(s string) string { return siteConf.Get(s) },
+func templateFuncs(siteGetter func(string) string) template.FuncMap {
+	return template.FuncMap{
+		"site":                 siteGetter,
+		"formatBytes":          format.Bytes,
+		"formatInt":            format.Count,
+		"formatFloat":          format.Number,
+		"formatUptime":         format.Uptime,
+		"parseDurationSeconds": format.SecondsToDuration,
 	}
+}
+
+func NewTemplate(siteConf site.SiteConfig) *Template {
+	funcs := templateFuncs(siteConf.Get)
 	tpl, err := template.New("").Funcs(funcs).ParseGlob("templates/*.html")
 	if err != nil {
 		panic(err)
@@ -46,9 +57,7 @@ func (t *Template) Render(c *echo.Context, w io.Writer, name string, data any) e
 }
 
 func NewTemplateForTest() *Template {
-	funcs := template.FuncMap{
-		"site": func(s string) string { return "test" },
-	}
+	funcs := templateFuncs(func(s string) string { return "test" })
 	_, filename, _, _ := runtime.Caller(0)
 	projectRoot := filepath.Join(filepath.Dir(filename), "../..")
 	templatesPath := filepath.Join(projectRoot, "templates", "*.html")
@@ -62,7 +71,7 @@ func NewTemplateForTest() *Template {
 	}
 }
 
-func Start(ctx context.Context, cfg env.Config, linkSvc *link.Service, clickSvc *click.Service) {
+func Start(ctx context.Context, cfg env.Config, linkSvc *link.Service, clickSvc *click.Service, statsSvc *stats.Service) {
 	e := echo.New()
 
 	siteConf := site.Read(cfg)
@@ -79,7 +88,7 @@ func Start(ctx context.Context, cfg env.Config, linkSvc *link.Service, clickSvc 
 		time.Duration(cfg.AltchaExpiryMin)*time.Minute,
 	)
 
-	handler := NewHandler(linkSvc, clickSvc, siteConf.Get("url"), captchaVerifier)
+	handler := NewHandler(linkSvc, clickSvc, statsSvc, siteConf.Get("url"), captchaVerifier)
 
 	api := e.Group("/_/api")
 	api.Use(middleware.CORSWithConfig(middleware.CORSConfig{
@@ -94,6 +103,8 @@ func Start(ctx context.Context, cfg env.Config, linkSvc *link.Service, clickSvc 
 
 	e.GET("/_/edit_link/:slug", handler.EditLink)
 	e.POST("/_/edit_link/:slug", handler.EditLink)
+
+	e.GET("/_/stats", handler.Stats)
 
 	e.GET("/:slug", handler.Redirect)
 

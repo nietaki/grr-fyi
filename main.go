@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/nietaki/grr-fyi/internal/click"
 	"github.com/nietaki/grr-fyi/internal/db"
@@ -17,6 +18,8 @@ import (
 	"github.com/nietaki/grr-fyi/internal/logging"
 	"github.com/nietaki/grr-fyi/internal/replication"
 	"github.com/nietaki/grr-fyi/internal/server"
+	"github.com/nietaki/grr-fyi/internal/site"
+	"github.com/nietaki/grr-fyi/internal/stats"
 	internalstore "github.com/nietaki/grr-fyi/internal/store"
 	"github.com/urfave/cli/v3"
 )
@@ -76,12 +79,14 @@ func runServe(ctx context.Context, cmd *cli.Command) error {
 
 	cfg := env.Get()
 
+	var replProvider stats.ReplicationProvider = stats.DisabledReplication
 	if cfg.ReplicationEnabled {
-		store, err := replication.Start(ctx, cfg)
+		lsStore, err := replication.Start(ctx, cfg)
 		if err != nil {
 			return fmt.Errorf("start replication: %w", err)
 		}
-		defer replication.Close(store)
+		defer replication.Close(lsStore)
+		replProvider = replication.StatusProvider(lsStore)
 	}
 
 	conn, err := db.Open(ctx, cfg)
@@ -103,7 +108,9 @@ func runServe(ctx context.Context, cmd *cli.Command) error {
 	clickSvc := click.NewService(clickStore, 1000)
 	defer clickSvc.Close()
 
-	server.Start(ctx, cfg, linkSvc, clickSvc)
+	statsSvc := stats.NewService(stats.NewStore(conn), site.Read(cfg).Get("url"), time.Now(), replProvider)
+
+	server.Start(ctx, cfg, linkSvc, clickSvc, statsSvc)
 
 	<-ctx.Done()
 	slog.Info("shutting down server...")

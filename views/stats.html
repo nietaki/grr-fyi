@@ -1,0 +1,78 @@
+{{define "content"}}
+<h1>Stats</h1>
+
+<h2>The numbers</h2>
+<table>
+  <thead>
+    <tr><th>Metric</th><th>Value</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Links</td>
+      <td>{{ formatInt .Site.TotalLinks }} total
+        ({{ formatInt .Site.ActiveLinks }} active · {{ formatInt .Site.RevokedLinks }} revoked)</td>
+    </tr>
+    <tr>
+      <td>Redirects served</td>
+      <td>{{ formatInt .Site.TotalClicks }}</td>
+    </tr>
+    <tr>
+      <td>Characters saved</td>
+      <td>{{ formatInt .Site.TotalCharsSaved }}</td>
+    </tr>
+    <tr>
+      <td>Average characters saved per link</td>
+      <td>{{ formatFloat .Site.AvgCharsSavedPerLink }}</td>
+    </tr>
+    <tr>
+      <td>Human time saved <small>(typing at 80 wpm)</small></td>
+      <td>{{ formatUptime (parseDurationSeconds .Site.HumanSecondsSaved) }}</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Under the hood</h2>
+<table>
+  <thead>
+    <tr><th>Metric</th><th>Value</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Uptime</td>
+      <td>{{ formatUptime .Runtime.Uptime }}</td>
+    </tr>
+    <tr>
+      <td>Process memory (<a href="https://en.wikipedia.org/wiki/Resident_set_size" target="_blank">RSS</a>)</td>
+      <td>{{ formatBytes .Runtime.RSSBytes }}</td>
+    </tr>
+    <tr>
+      <td>Go heap (<a href="https://pkg.go.dev/runtime#MemStats" target="_blank">alloc / inuse</a>)</td>
+      <td>{{ formatBytes .Runtime.HeapAllocBytes }} / {{ formatBytes .Runtime.HeapInuseBytes }}</td>
+    </tr>
+    <tr>
+      <td>Goroutines</td>
+      <td>{{ formatInt .Runtime.Goroutines }}</td>
+    </tr>
+    <tr>
+      <td>SQLite database size</td>
+      <td>{{ formatBytes .Runtime.DBSizeBytes }}</td>
+    </tr>
+    <tr>
+      <td>Litestream replication</td>
+      <td>
+        {{- if not .Replication.Enabled -}}
+          disabled
+        {{- else if .Replication.Err -}}
+          error: {{ .Replication.Err }}
+        {{- else if .Replication.InSync -}}
+          in sync (tx {{ formatInt .Replication.LocalTXID }})
+        {{- else -}}
+          syncing (local {{ formatInt .Replication.LocalTXID }} / remote {{ formatInt .Replication.RemoteTXID }})
+        {{- end -}}
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<p><small>Computed live at {{ .GeneratedAt.Format "2006-01-02 15:04:05 UTC" }}. One Go binary, one SQLite database.</small></p>
+{{end}}

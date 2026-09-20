@@ -25,6 +25,7 @@ import (
 	"github.com/nietaki/grr-fyi/internal/db"
 	"github.com/nietaki/grr-fyi/internal/env"
 	"github.com/nietaki/grr-fyi/internal/link"
+	"github.com/nietaki/grr-fyi/internal/stats"
 	"github.com/nietaki/grr-fyi/internal/store"
 )
 
@@ -60,7 +61,7 @@ func (s *HandlerTestSuite) SetupTest() {
 	s.clickSvc = click.NewService(clickStore, 100)
 
 	// Create handler
-	s.handler = NewHandler(s.linkSvc, s.clickSvc, "https://grr.fyi/", captcha.New("", 5000, 0))
+	s.handler = NewHandler(s.linkSvc, s.clickSvc, stats.NewService(stats.NewStore(s.conn), "https://grr.fyi/", time.Now(), nil), "https://grr.fyi/", captcha.New("", 5000, 0))
 
 	// Create Echo instance with renderer
 	s.echo = echo.New()
@@ -426,7 +427,7 @@ func (s *CaptchaHandlerTestSuite) SetupTest() {
 
 	s.captcha = captcha.New("test-secret", 100, 10*time.Minute)
 
-	s.handler = NewHandler(s.linkSvc, s.clickSvc, "https://grr.fyi/", s.captcha)
+	s.handler = NewHandler(s.linkSvc, s.clickSvc, stats.NewService(stats.NewStore(s.conn), "https://grr.fyi/", time.Now(), nil), "https://grr.fyi/", s.captcha)
 
 	s.echo = echo.New()
 	s.echo.Renderer = NewTemplateForTest()
@@ -543,7 +544,7 @@ func (s *CaptchaHandlerTestSuite) TestAltchaChallengeEndpoint() {
 
 func (s *CaptchaHandlerTestSuite) TestAltchaChallengeEndpointDisabled() {
 	s.T().Run("returns 404 when captcha is disabled", func(t *testing.T) {
-		disabledHandler := NewHandler(s.linkSvc, s.clickSvc, "https://grr.fyi/", captcha.New("", 5000, 0))
+		disabledHandler := NewHandler(s.linkSvc, s.clickSvc, stats.NewService(stats.NewStore(s.conn), "https://grr.fyi/", time.Now(), nil), "https://grr.fyi/", captcha.New("", 5000, 0))
 
 		req := httptest.NewRequest(http.MethodGet, "/_/api/altcha/challenge", nil)
 		rec := httptest.NewRecorder()
@@ -939,5 +940,55 @@ func (s *HandlerTestSuite) TestEditLinkRevoked() {
 		body := rec.Body.String()
 		require.Contains(t, body, "410")
 		require.Contains(t, body, "This link has been revoked.")
+	})
+}
+
+// ==================== STATS TESTS ====================
+
+func (s *HandlerTestSuite) TestStatsPage() {
+	s.T().Run("renders aggregate stats", func(t *testing.T) {
+		ctx := context.Background()
+
+		_, err := s.linkSvc.Create(ctx, link.CreateRequest{
+			TargetURL:  "https://example.com/some/really/long/target/path",
+			CustomSlug: "statlink",
+		})
+		require.NoError(t, err)
+
+		// Record clicks through the redirect handler so counters move
+		req := httptest.NewRequest(http.MethodGet, "/statlink", nil)
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+		c.SetPathValues(echo.PathValues{{Name: "slug", Value: "statlink"}})
+		err = s.handler.Redirect(c)
+		require.NoError(t, err)
+		s.clickSvc.Flush()
+
+		req = httptest.NewRequest(http.MethodGet, "/_/stats", nil)
+		rec = httptest.NewRecorder()
+		c = s.echo.NewContext(req, rec)
+
+		err = s.handler.Stats(c)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, rec.Code)
+
+		body := rec.Body.String()
+		require.Contains(t, body, "Characters saved")
+		require.Contains(t, body, "Redirects served")
+		require.Contains(t, body, "Human time saved")
+		require.Contains(t, body, "SQLite database size")
+		require.Contains(t, body, "Litestream replication")
+		require.Contains(t, body, "disabled") // replication off in tests
+	})
+
+	s.T().Run("nil stats service returns 503", func(t *testing.T) {
+		h := NewHandler(s.linkSvc, s.clickSvc, nil, "https://grr.fyi/", captcha.New("", 5000, 0))
+		req := httptest.NewRequest(http.MethodGet, "/_/stats", nil)
+		rec := httptest.NewRecorder()
+		c := s.echo.NewContext(req, rec)
+
+		err := h.Stats(c)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	})
 }
