@@ -8,6 +8,26 @@
 - [x] S3 / scaleway object storage replication
 - [ ] altcha
 
+## Development container (contagent)
+
+Pi (and other coding agents) can run against this repository inside a
+[contagent](https://github.com/kanaka/contagent) container, which keeps the project
+read-write while narrowing what host files, credentials, and services the agent can
+reach. This repository carries the reviewed baseline config
+([`.contagent.yaml`](.contagent.yaml)); the operator workflow, trust model, security
+matrix, and acceptance checklist live in
+[`docs/contagent-pi-workflow.md`](docs/contagent-pi-workflow.md).
+
+This is a development-workflow concern only: the deployed application image is built
+from the repository [`Dockerfile`](Dockerfile) and is unrelated.
+
+```bash
+# from the repository root, after the one-time setup in docs/contagent-pi-workflow.md
+env -u SSH_AUTH_SOCK ~/repos/contagent/contagent --show-config   # inspect the boundary
+env -u SSH_AUTH_SOCK ~/repos/contagent/contagent -- pi           # Pi in the container
+env -u SSH_AUTH_SOCK ~/repos/contagent/contagent -- make test    # one-shot target
+```
+
 ## URL Shortener Data Model
 
 ### Schema Overview

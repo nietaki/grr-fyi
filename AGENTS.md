@@ -36,6 +36,27 @@ make pprof-shell        # Interactive pprof shell (CPU, 30s)
 - **Shutdown order**: LIFO defers — app `conn.Close()` runs before `store.Close()` (Litestream final sync).
 - **Bash scripts**: When running ephemeral debugging commands or one-off scripts during a session, use relative paths. Absolute paths may be blocked by opencode's sandbox, which restricts writes outside the workspace.
 
+## Containerized Agent Development
+
+This repository carries a reviewed contagent baseline (`.contagent.yaml`); the operator
+workflow, trust model, and acceptance checklist are in
+[`docs/contagent-pi-workflow.md`](docs/contagent-pi-workflow.md). Nothing in the
+deployed application image is affected.
+
+If you find yourself running **inside** such a container, note:
+
+- The project mount is read-write, but `.envrc-priv` is masked to a zero-byte read-only
+  file. Never try to defeat the mask or the host `*.envrc-priv` access rule.
+- Host environment is **not** inherited: `SITE_URL`, `DB_PATH`, `REPLICATION_ENABLED`,
+  and `LITESTREAM_*` are unset unless deliberately declared in `.contagent.yaml`, and
+  `direnv` is not installed, so `.envrc` is inert here. Export what you need per command
+  rather than assuming the host's values.
+- Use the existing `make` targets; they work as-is (`make test`, `make check`).
+- Pushing, deploying, image rebuilds, new mounts, and credential grants are operator
+  actions — see the reserved-actions list in the workflow doc.
+- mise is authoritative for `.tool-versions`, but its data lives in the container cache
+  (`/var/cache/contagent/mise`), not the host's.
+
 ## Testing
 
 - **Framework**: Use `github.com/stretchr/testify` (with `testify/suite` and `testify/require`) for all tests. Write tests for any new functionality that's not very difficult to test.

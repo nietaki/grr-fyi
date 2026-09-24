@@ -1,0 +1,79 @@
+# contagent runtime config for running Pi against this repository.
+#
+# Reusable baseline for the workflow documented in
+# docs/contagent-pi-workflow.md. Layers OVER the image's embedded defaults
+# (embedded defaults -> this file -> CLI --<feature>/--no-<feature> flags).
+# Only deliberate deviations are listed; anything omitted inherits the image
+# default, so re-run `--show-config` after every image rebuild.
+#
+# Portability rules for this file: no credentials, no operator-specific home
+# paths. `~` expands to the mapped host home; `${PWD}` to the launch directory;
+# unknown `${...}` tokens pass through literally (that is why PATH below is an
+# absolute literal, not "...:${PATH}"). Quote `~`-prefixed scalars: unquoted `~`
+# alone is YAML null.
+#
+# Inspect before launching (from the repository root):
+#   <contagent-checkout>/contagent --show-config
+# The launcher also prints one `[volumes] ...` line per mount at startup.
+
+version: 2
+
+features:
+  # Pi with a dedicated, operator-curated profile instead of the embedded
+  # `~/.pi` mount, which would expose host auth, sessions, run history,
+  # caches, model data, and MCP state. Sessions, trust.json, and settings all
+  # live under PI_CODING_AGENT_DIR, so they land inside the dedicated profile.
+  - name: pi
+    volumes:
+      - { path: "~/.pi-contagent" }
+    environment:
+      PI_CODING_AGENT_DIR: "~/.pi-contagent/agent"
+
+  # mise stays authoritative for project tool versions (.tool-versions), but
+  # must NOT mount host mise directories: the host cache contains macOS
+  # (darwin-arm64) binaries that cannot execute in this Linux image, and
+  # writing Linux binaries back into the host cache would corrupt host tool
+  # installs. Keep all mise state in the persisted contagent cache volume.
+  - name: mise
+    volumes: []
+    environment:
+      MISE_DATA_DIR: /var/cache/contagent/mise
+      MISE_CONFIG_DIR: /var/cache/contagent/mise/config
+      MISE_CACHE_DIR: /var/cache/contagent/mise/cache
+      MISE_STATE_DIR: /var/cache/contagent/mise/state
+      # mise's Go backend injects GOBIN=<mise install dir>/bin and prepends it to
+      # PATH per-command, so `make install`'s `go install ...` tools land somewhere
+      # that is NOT on the container PATH and `make check` then reports
+      # "goimports: command not found". Disabling the injection makes `go install`
+      # fall back to $GOPATH/bin (see the go feature below), which is on PATH.
+      MISE_GO_SET_GOBIN: "false"
+      # Shims first so mise-managed versions win over the image fallback
+      # toolchain; GOBIN (via GOPATH) next for `make install` tools.
+      PATH: /var/cache/contagent/mise/shims:/var/cache/contagent/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+  # Persist the Go module/toolchain cache and the `make install` tooling
+  # binaries on the contagent cache volume instead of the ephemeral container
+  # home. GOTOOLCHAIN is left at its default (auto): see the version-pin
+  # discussion in docs/contagent-pi-workflow.md section 2.4.
+  - name: go
+    environment:
+      GOPATH: /var/cache/contagent/go
+      GOCACHE: /var/cache/contagent/go-build
+
+  # psql client only: this project uses SQLite + Litestream, not Supabase, so
+  # the feature's `~/.supabase` volume default is dropped.
+  - name: psql
+    volumes: []
+
+  # `runtime` is required (always enabled), so the read-only mask for
+  # `.envrc-priv` rides with it rather than with an optional feature. The
+  # embedded runtime volumes are restated because `volumes` replaces the
+  # whole list. The mask source is auto-created as a zero-byte file by the
+  # launcher (it lives under the mapped home), which is what hides the
+  # Litestream/S3 credentials that sit inside the read-write project mount.
+  - name: runtime
+    volumes:
+      - { path: "~/.contagent" }
+      - { path: "~/.local/state/contagent" }
+      - { path: "/var/cache/contagent", source: "~/.cache/contagent" }
+      - { path: "${PWD}/.envrc-priv", source: "~/.cache/contagent/empty-file", read_only: true, file: true }
